@@ -1,0 +1,16 @@
+# Arquivos Raster GeoTIFF brutos (>100MB excedem o limite de arquivo único do GitHub)
+*.tif
+*.tiff
+
+# Perfis e arquivos temporários de automação/testes
+scratch/chrome_profile*/
+artifacts/scratch/chrome_profile*/
+.tempmediaStorage/
+node_modules/
+
+# Logs do sistema e temporários
+*.log
+.DS_Store
+Thumbs.db
+artifacts/*.webp
+

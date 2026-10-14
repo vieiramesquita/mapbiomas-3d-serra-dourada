@@ -1,0 +1,206 @@
+{
+  "title": "Parque Estadual da Serra Dourada - MapBiomas Col. 11 (2025)",
+  "location": "Goiás, Brasil",
+  "width": 1650,
+  "height": 847,
+  "res_x": 30.0,
+  "res_y": 30.0,
+  "aspect_ratio": 1.9481,
+  "elevation": {
+    "min_m": 361.2,
+    "max_m": 1060.2,
+    "span_m": 699.0
+  },
+  "bounds": {
+    "left": 553217.0338917221,
+    "bottom": 8212876.477451557,
+    "right": 602717.0338917221,
+    "top": 8238286.477451557,
+    "crs": "EPSG:31982"
+  },
+  "statistics": {
+    "total_pixels": 1384860,
+    "total_area_ha": 124637.4,
+    "total_area_km2": 1246.37,
+    "pixel_resolution_m": 30.0,
+    "groups": [
+      {
+        "name": "Vegetação Nativa",
+        "pixels": 436685,
+        "area_ha": 39301.65,
+        "area_km2": 393.02,
+        "percentage": 31.53,
+        "color": "#10b981"
+      },
+      {
+        "name": "Agropecuária",
+        "pixels": 938470,
+        "area_ha": 84462.3,
+        "area_km2": 844.62,
+        "percentage": 67.77,
+        "color": "#f59e0b"
+      },
+      {
+        "name": "Áreas Não Vegetadas",
+        "pixels": 8192,
+        "area_ha": 737.28,
+        "area_km2": 7.37,
+        "percentage": 0.59,
+        "color": "#ef4444"
+      },
+      {
+        "name": "Corpos Hídricos",
+        "pixels": 1513,
+        "area_ha": 136.17,
+        "area_km2": 1.36,
+        "percentage": 0.11,
+        "color": "#3b82f6"
+      }
+    ]
+  },
+  "classes": [
+    {
+      "id": 15,
+      "name_pt": "3.1. Pastagem",
+      "name_en": "3.1. Pasture",
+      "group": "Agropecuária",
+      "hex": "#588834",
+      "count": 746968,
+      "area_ha": 67227.12,
+      "area_km2": 672.27,
+      "percentage": 53.94
+    },
+    {
+      "id": 3,
+      "name_pt": "1.1 Formação Florestal",
+      "name_en": "1.1. Forest Formation",
+      "group": "Vegetação Nativa",
+      "hex": "#1f8d49",
+      "count": 252997,
+      "area_ha": 22769.73,
+      "area_km2": 227.7,
+      "percentage": 18.27
+    },
+    {
+      "id": 21,
+      "name_pt": "3.4. Mosaico de Usos",
+      "name_en": "3.4. Mosaic of Uses",
+      "group": "Agropecuária",
+      "hex": "#749c44",
+      "count": 161773,
+      "area_ha": 14559.57,
+      "area_km2": 145.6,
+      "percentage": 11.68
+    },
+    {
+      "id": 4,
+      "name_pt": "1.3. Formação Savânica",
+      "name_en": "1.3. Savanna Formation",
+      "group": "Vegetação Nativa",
+      "hex": "#7dc975",
+      "count": 139939,
+      "area_ha": 12594.51,
+      "area_km2": 125.95,
+      "percentage": 10.1
+    },
+    {
+      "id": 29,
+      "name_pt": "2.7. Afloramento Rochoso",
+      "name_en": "2.7. Rocky Outcrop",
+      "group": "Vegetação Nativa",
+      "hex": "#ad5100",
+      "count": 40415,
+      "area_ha": 3637.35,
+      "area_km2": 36.37,
+      "percentage": 2.92
+    },
+    {
+      "id": 39,
+      "name_pt": "3.2.1.1. Soja",
+      "name_en": "3.2.1.1. Soybean",
+      "group": "Agropecuária",
+      "hex": "#f5b3c8",
+      "count": 23404,
+      "area_ha": 2106.36,
+      "area_km2": 21.06,
+      "percentage": 1.69
+    },
+    {
+      "id": 24,
+      "name_pt": "4.2. Área Urbanizada",
+      "name_en": "4.2. Urban Area",
+      "group": "Áreas Não Vegetadas",
+      "hex": "#d4271e",
+      "count": 7788,
+      "area_ha": 700.92,
+      "area_km2": 7.01,
+      "percentage": 0.56
+    },
+    {
+      "id": 41,
+      "name_pt": "3.2.1.5. Outras Lavouras Temporárias",
+      "name_en": "3.2.1.5. Other Temporary Crops",
+      "group": "Agropecuária",
+      "hex": "#f54ca9",
+      "count": 4848,
+      "area_ha": 436.32,
+      "area_km2": 4.36,
+      "percentage": 0.35
+    },
+    {
+      "id": 12,
+      "name_pt": "2.1. Formação Campestre",
+      "name_en": "2.1. Grassland Formation",
+      "group": "Vegetação Nativa",
+      "hex": "#d6bc74",
+      "count": 3285,
+      "area_ha": 295.65,
+      "area_km2": 2.96,
+      "percentage": 0.24
+    },
+    {
+      "id": 9,
+      "name_pt": "3.3. Silvicultura",
+      "name_en": "3.3. Forest Plantation",
+      "group": "Agropecuária",
+      "hex": "#7a5900",
+      "count": 1477,
+      "area_ha": 132.93,
+      "area_km2": 1.33,
+      "percentage": 0.11
+    },
+    {
+      "id": 33,
+      "name_pt": "5.1 Rio, Lago e Oceano",
+      "name_en": "5.1. River, Lake and Ocean",
+      "group": "Corpos Hídricos",
+      "hex": "#2532e4",
+      "count": 1513,
+      "area_ha": 136.17,
+      "area_km2": 1.36,
+      "percentage": 0.11
+    },
+    {
+      "id": 25,
+      "name_pt": "4.6. Outras Áreas não Vegetadas",
+      "name_en": "4.6. Other non Vegetated Areas",
+      "group": "Áreas Não Vegetadas",
+      "hex": "#db4d4f",
+      "count": 404,
+      "area_ha": 36.36,
+      "area_km2": 0.36,
+      "percentage": 0.03
+    },
+    {
+      "id": 11,
+      "name_pt": "2.3. Campo Alagado e Área Pantanosa",
+      "name_en": "2.3 Wetland",
+      "group": "Vegetação Nativa",
+      "hex": "#519799",
+      "count": 49,
+      "area_ha": 4.41,
+      "area_km2": 0.04,
+      "percentage": 0.0
+    }
+  ]
+}

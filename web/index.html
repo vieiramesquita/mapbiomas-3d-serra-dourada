@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MapBiomas 3D - Parque Estadual da Serra Dourada</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=20261007_v4">
+</head>
+<body>
+  <!-- 3D Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loader-content">
+      <div class="spinner"></div>
+      <h2 id="loading-title">Carregando Piloto 3D</h2>
+      <p id="loading-status">Carregando Modelo Digital de Elevação (Copernicus 30m)...</p>
+      <div class="progress-bar-container">
+        <div id="progress-bar" class="progress-bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Navigation / Brand Bar -->
+  <header class="top-bar">
+    <div class="brand-group">
+      <div class="brand-badge">MapBiomas Col. 11 (2025)</div>
+      <h1 class="project-title">Parque Estadual da Serra Dourada <span class="tag-geo">Goiás • Brasil</span></h1>
+    </div>
+    <div class="top-stats">
+      <div class="stat-item">
+        <span class="stat-label">Área Mapeada</span>
+        <span class="stat-value" id="stat-total-area">124.637 ha</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Desnível</span>
+        <span class="stat-value" id="stat-relief">699 m</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Altitude Máx.</span>
+        <span class="stat-value" id="stat-max-elev">1.060 m</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Resolução</span>
+        <span class="stat-value">30m (Copernicus DEM)</span>
+      </div>
+      <button id="btn-open-stats" class="btn-stats-badge" title="Ver Estatísticas Detalhadas de Área e Classes">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/><path d="M4 20h16"/></svg>
+        <span>Estatísticas da Área</span>
+      </button>
+      <button id="btn-toggle-all-menus" class="btn-top-action" title="Ocultar ou exibir todos os menus para visualização panorâmica">
+        <svg id="icon-toggle-all" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span id="label-toggle-all">Ocultar Menus</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Left Control Panel (Floating HUD) -->
+  <aside class="control-panel glass-card" id="control-panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <svg class="icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Controles 3D
+      </div>
+      <button id="btn-toggle-panel" class="btn-panel-minimize" title="Ocultar painel de controles">◀ Ocultar</button>
+    </div>
+
+    <div class="panel-body" id="control-panel-body">
+
+    <div class="control-group">
+      <div class="slider-header">
+        <label for="slider-exaggeration">Exagero Vertical</label>
+        <span class="slider-val" id="val-exaggeration">1.0x (1:1 Real)</span>
+      </div>
+      <input type="range" id="slider-exaggeration" min="0.2" max="4.0" step="0.1" value="1.0">
+      <div class="slider-ticks">
+        <span>0.2x</span>
+        <span style="color: var(--accent-green); font-weight: 600;">1.0x (1:1 Real)</span>
+        <span>2.5x</span>
+        <span>4.0x</span>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <div class="slider-header">
+        <label for="slider-sun-azimuth">Posição do Sol (Azimute)</label>
+        <span class="slider-val" id="val-sun-azimuth">315° (NO)</span>
+      </div>
+      <input type="range" id="slider-sun-azimuth" min="0" max="360" step="5" value="315">
+    </div>
+
+    <div class="control-group">
+      <div class="slider-header">
+        <label for="slider-sun-elevation">Elevação Solar (Sombras)</label>
+        <span class="slider-val" id="val-sun-elevation">30°</span>
+      </div>
+      <input type="range" id="slider-sun-elevation" min="5" max="85" step="1" value="30">
+    </div>
+
+    <div class="control-group">
+      <label class="group-label">Camada de Textura</label>
+      <div class="btn-segmented" id="btn-group-layer">
+        <button class="seg-btn" data-layer="satellite" id="layer-satellite">Satélite</button>
+        <button class="seg-btn active" data-layer="blend" id="layer-blend">Satélite + MapBiomas</button>
+        <button class="seg-btn" data-layer="mapbiomas" id="layer-mapbiomas">MapBiomas</button>
+        <button class="seg-btn" data-layer="hypsometric" id="layer-hypsometric">Relevo</button>
+      </div>
+    </div>
+
+    <div class="control-group" id="group-texture-res">
+      <div class="slider-header">
+        <label class="group-label">Resolução do Satélite</label>
+        <span class="badge-tag" id="badge-sat-res" style="background: rgba(16, 185, 129, 0.2); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.4);">8K (8.192px)</span>
+      </div>
+      <div class="btn-segmented" id="btn-group-sat-res">
+        <button class="seg-btn" data-res="4k" id="btn-res-4k">4K</button>
+        <button class="seg-btn active" data-res="8k" id="btn-res-8k">8K (Padrão)</button>
+        <button class="seg-btn" data-res="12k" id="btn-res-12k">12K Ultra</button>
+      </div>
+    </div>
+
+    <div class="control-group" id="group-opacity">
+      <div class="slider-header">
+        <label for="slider-opacity">Opacidade do MapBiomas</label>
+        <span class="slider-val" id="val-opacity">65%</span>
+      </div>
+      <input type="range" id="slider-opacity" min="0" max="100" step="5" value="65">
+      <div class="slider-ticks">
+        <span>0% (Satélite puro)</span>
+        <span>65% (Sobreposto)</span>
+        <span>100% (MapBiomas)</span>
+      </div>
+    </div>
+
+    <div class="control-group" id="group-props">
+      <div class="slider-header">
+        <label class="group-label">Vegetação & Modelos 3D Reais</label>
+        <span class="badge-tag" id="badge-props-count">400.000+ objetos</span>
+      </div>
+      
+      <div class="options-row" style="margin-bottom: 8px;">
+        <label class="switch-container">
+          <input type="checkbox" id="check-props" checked>
+          <span class="switch-slider"></span>
+          <span class="switch-label">Exibir Modelos 3D</span>
+        </label>
+
+        <label class="switch-container">
+          <input type="checkbox" id="check-props-shadows" checked>
+          <span class="switch-slider"></span>
+          <span class="switch-label">Sombras 3D</span>
+        </label>
+      </div>
+
+      <div class="slider-header">
+        <label for="slider-prop-scale">Escala dos Props</label>
+        <span class="slider-val" id="val-prop-scale">1.0x (1:1 Real)</span>
+      </div>
+      <input type="range" id="slider-prop-scale" min="0.5" max="4.0" step="0.1" value="1.0">
+      <div class="slider-ticks">
+        <span>0.5x</span>
+        <span style="color: var(--accent-green); font-weight: 600;">1.0x (1:1 Botânico)</span>
+        <span>2.0x</span>
+        <span>4.0x</span>
+      </div>
+
+      <!-- Densidade da Vegetação (+ props por pixel) -->
+      <div class="density-control-container">
+        <div class="slider-header" style="margin-bottom: 6px;">
+          <label for="btn-increase-density" style="font-weight: 600; color: var(--text-main); font-size: 0.8rem; display: flex; align-items: center; gap: 5px;">
+            <span>🌿 Densidade da Vegetação</span>
+          </label>
+          <span class="slider-val" id="val-prop-density" style="color: var(--accent-green); font-weight: 600;">1.0x Padrão</span>
+        </div>
+
+        <button class="btn-increase-density" id="btn-increase-density" title="Clique para aumentar a densidade de objetos e árvores por pixel">
+          <span style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 1.05rem;">➕</span>
+            <span>Aumentar Densidade (+ props/px)</span>
+          </span>
+          <span class="badge" id="badge-density-next" style="background: rgba(16, 185, 129, 0.45); font-size: 0.7rem; padding: 2px 7px; border-radius: 6px; font-weight: 700;">+50% (1.5x)</span>
+        </button>
+
+        <div class="btn-density-grid">
+          <button class="btn-density active" data-density="1.0" id="btn-density-1x">1.0x Padrão</button>
+          <button class="btn-density" data-density="1.5" id="btn-density-15x">1.5x Alta</button>
+          <button class="btn-density" data-density="2.0" id="btn-density-2x">2.0x Densa</button>
+          <button class="btn-density" data-density="2.5" id="btn-density-25x">2.5x Ultra</button>
+        </div>
+      </div>
+
+      <div class="props-chips-grid">
+        <button class="prop-chip active" data-prop="forest" id="chip-forest">
+          <span class="chip-dot" style="background: #1f8d49;"></span>
+          <span>Mata Tropical (1.1)</span>
+        </button>
+        <button class="prop-chip active" data-prop="cerrado" id="chip-cerrado">
+          <span class="chip-dot" style="background: #7dc975;"></span>
+          <span>Cerrado & Arbustos (1.3)</span>
+        </button>
+        <button class="prop-chip active" data-prop="rocks" id="chip-rocks">
+          <span class="chip-dot" style="background: #ad5100;"></span>
+          <span>Quartzito & Rupestre (2.7)</span>
+        </button>
+        <button class="prop-chip active" data-prop="pasture" id="chip-pasture">
+          <span class="chip-dot" style="background: #588834;"></span>
+          <span>Capim Braquiária (3.1)</span>
+        </button>
+        <button class="prop-chip active" data-prop="soybean" id="chip-soybean">
+          <span class="chip-dot" style="background: #f5b3c8;"></span>
+          <span>Soja (3.2.1.1)</span>
+        </button>
+        <button class="prop-chip active" data-prop="tempcrops" id="chip-tempcrops">
+          <span class="chip-dot" style="background: #f54ca9;"></span>
+          <span>Lavouras Temp. (3.2.1.5)</span>
+        </button>
+        <button class="prop-chip active" data-prop="silviculture" id="chip-silviculture">
+          <span class="chip-dot" style="background: #7a5900;"></span>
+          <span>Eucalipto (3.3)</span>
+        </button>
+        <button class="prop-chip active" data-prop="grassland" id="chip-grassland">
+          <span class="chip-dot" style="background: #d6bc74;"></span>
+          <span>Campo Nativo (2.1)</span>
+        </button>
+        <button class="prop-chip active" data-prop="wetland" id="chip-wetland">
+          <span class="chip-dot" style="background: #519799;"></span>
+          <span>Veredas & Buritis (2.3)</span>
+        </button>
+        <button class="prop-chip active" data-prop="urban" id="chip-urban">
+          <span class="chip-dot" style="background: #d4271e;"></span>
+          <span>Cidade & Edificações (4.2)</span>
+        </button>
+        <button class="prop-chip active" data-prop="bare" id="chip-bare">
+          <span class="chip-dot" style="background: #db4d4f;"></span>
+          <span>Solo Exposto (4.6)</span>
+        </button>
+        <button class="prop-chip active" data-prop="water" id="chip-water">
+          <span class="chip-dot" style="background: #2532e4;"></span>
+          <span>Rios & Margens (5.1)</span>
+        </button>
+        <button class="prop-chip active" data-prop="cattle" id="chip-cattle">
+          <span class="chip-dot" style="background: #ffffff; border: 1px solid rgba(255,255,255,0.6);"></span>
+          <span>Gado & Cavalos 🐄</span>
+        </button>
+        <button class="prop-chip active" data-prop="machinery" id="chip-machinery">
+          <span class="chip-dot" style="background: #eab308;"></span>
+          <span>Maquinário Agrícola 🚜</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label class="group-label">Ângulos de Câmera & Escala</label>
+      <div class="camera-presets">
+        <button class="btn-preset" id="btn-scale-1to1" style="grid-column: span 2; margin-bottom: 4px; border-color: rgba(16, 185, 129, 0.5); background: rgba(16, 185, 129, 0.15); color: #fff; font-weight: 600;">🎯 Resetar para Escala 1:1 Real</button>
+        <button class="btn-preset active" data-view="crista" id="preset-crista">Crista (Rochas)</button>
+        <button class="btn-preset" data-view="rebanho" id="preset-rebanho">Rebanho no Pasto 🐄</button>
+        <button class="btn-preset" data-view="maquinario" id="preset-maquinario">Colheitadeiras & Tratores 🚜</button>
+        <button class="btn-preset" data-view="urbano" id="preset-urbano">Cidade de Goiás</button>
+        <button class="btn-preset" data-view="floresta" id="preset-floresta">Matas & Encosta</button>
+        <button class="btn-preset" data-view="soja" id="preset-soja">Campos de Soja</button>
+        <button class="btn-preset" data-view="silvicultura" id="preset-silvicultura">Silvicultura (Talhões) 🌲</button>
+        <button class="btn-preset" data-view="veredas" id="preset-veredas">Veredas (Buritis)</button>
+        <button class="btn-preset" data-view="rios" id="preset-rios">Rios & Represas</button>
+        <button class="btn-preset" data-view="panoramica" id="preset-panoramica">Panorâmica</button>
+      </div>
+    </div>
+
+    <div class="control-group options-row">
+      <label class="switch-container">
+        <input type="checkbox" id="check-turntable">
+        <span class="switch-slider"></span>
+        <span class="switch-label">Auto-rotação</span>
+      </label>
+
+      <label class="switch-container">
+        <input type="checkbox" id="check-wireframe">
+        <span class="switch-slider"></span>
+        <span class="switch-label">Malha (Wireframe)</span>
+      </label>
+    </div>
+
+    <button id="btn-reset-view" class="btn-action">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+      Redefinir Câmera
+    </button>
+    </div> <!-- end .panel-body -->
+  </aside>
+
+  <!-- Botão Flutuante para reabrir Controles 3D quando minimizado -->
+  <button id="btn-show-panel" class="floating-dock-btn dock-left" title="Reabrir Controles 3D">
+    <span class="dock-icon">⚙️</span>
+    <span class="dock-text">Controles 3D</span>
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+  </button>
+
+  <!-- Right Floating Legend Panel -->
+  <aside class="legend-panel glass-card" id="legend-panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <svg class="icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        Legenda
+      </div>
+      <div class="panel-header-actions">
+        <span class="badge-total" id="legend-total-classes">13 classes</span>
+        <button id="btn-toggle-legend" class="btn-panel-minimize" title="Ocultar legenda">Ocultar ▶</button>
+      </div>
+    </div>
+
+    <div class="legend-list" id="legend-items-container">
+      <!-- Populated dynamically via JavaScript with official hex colors and percentages -->
+    </div>
+
+    <div class="legend-footer">
+      <span class="legend-source">Fonte: MapBiomas Brasil Col. 11 (2025)</span>
+    </div>
+  </aside>
+
+  <!-- Botão Flutuante para reabrir Legenda quando minimizada -->
+  <button id="btn-show-legend" class="floating-dock-btn dock-right" title="Reabrir Legenda">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+    <span class="dock-icon">📊</span>
+    <span class="dock-text">Legenda</span>
+  </button>
+
+  <!-- Compass Widget -->
+  <div class="compass-widget glass-card" id="compass-widget" title="Clique para alinhar para o Norte">
+    <div class="compass-rose" id="compass-rose">
+      <span class="compass-n">N</span>
+      <div class="compass-needle"></div>
+    </div>
+  </div>
+
+  <!-- Instruction Banner -->
+  <div class="instructions-banner glass-card" id="instructions-banner">
+    <span><strong>Girar:</strong> Botão esquerdo</span> • 
+    <span><strong>Deslocar (Pan):</strong> Botão direito</span> • 
+    <span><strong>Zoom:</strong> Scroll do mouse</span>
+  </div>
+
+  <!-- Modal de Estatísticas Territoriais de Cobertura e Uso do Solo -->
+  <div id="modal-stats" class="modal-backdrop">
+    <div class="modal-dialog glass-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-badge">Balanço Territorial & Altimétrico</div>
+          <h2 class="modal-title">Estatísticas de Cobertura e Uso do Solo</h2>
+          <p class="modal-subtitle">Parque Estadual da Serra Dourada e Entorno • MapBiomas Brasil Coleção 11 (2025)</p>
+        </div>
+        <button id="btn-close-stats" class="btn-icon modal-close" title="Fechar modal">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- KPI Cards -->
+        <div class="stats-kpi-grid">
+          <div class="kpi-card kpi-total">
+            <span class="kpi-label">Área Mapeada Total</span>
+            <span class="kpi-val" id="kpi-total-ha">124.637 ha</span>
+            <span class="kpi-sub" id="kpi-total-km2">1.246,37 km² • 1.384.860 px (30m)</span>
+          </div>
+          <div class="kpi-card kpi-agro">
+            <div class="kpi-indicator" style="background: #f59e0b;"></div>
+            <span class="kpi-label">Agropecuária</span>
+            <span class="kpi-val" id="kpi-agro-ha">84.462 ha</span>
+            <span class="kpi-sub" id="kpi-agro-pct">67,77% do território</span>
+          </div>
+          <div class="kpi-card kpi-native">
+            <div class="kpi-indicator" style="background: #10b981;"></div>
+            <span class="kpi-label">Vegetação Nativa</span>
+            <span class="kpi-val" id="kpi-native-ha">39.302 ha</span>
+            <span class="kpi-sub" id="kpi-native-pct">31,53% do território</span>
+          </div>
+          <div class="kpi-card kpi-urban">
+            <div class="kpi-indicator" style="background: #ef4444;"></div>
+            <span class="kpi-label">Áreas Não Vegetadas</span>
+            <span class="kpi-val" id="kpi-urban-ha">737 ha</span>
+            <span class="kpi-sub" id="kpi-urban-pct">0,59% (Urbano & Exposto)</span>
+          </div>
+          <div class="kpi-card kpi-water">
+            <div class="kpi-indicator" style="background: #3b82f6;"></div>
+            <span class="kpi-label">Corpos Hídricos</span>
+            <span class="kpi-val" id="kpi-water-ha">136 ha</span>
+            <span class="kpi-sub" id="kpi-water-pct">0,11% (Rios & Represas)</span>
+          </div>
+        </div>
+
+        <!-- Distribution Progress Bar -->
+        <div class="distribution-section">
+          <div class="distribution-header">
+            <span class="section-title">Composição Macrogrupal do Território</span>
+            <span class="section-meta">Cálculo espacial exato (resolução 30×30m)</span>
+          </div>
+          <div class="distribution-bar" id="distribution-bar">
+            <!-- Dynamic segments via JS -->
+          </div>
+          <div class="distribution-legend" id="distribution-legend">
+            <!-- Dynamic legend via JS -->
+          </div>
+        </div>
+
+        <!-- Detailed Table -->
+        <div class="table-section">
+          <div class="table-header">
+            <span class="section-title">Detalhamento por Classe de Cobertura e Uso (13 Classes)</span>
+            <div class="table-actions">
+              <button id="btn-copy-stats" class="btn-table-action" title="Copiar resumo para a área de transferência">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <span>Copiar Resumo</span>
+              </button>
+              <button id="btn-export-csv" class="btn-table-action" title="Exportar tabela completa em CSV">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                <span>Exportar CSV</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-scroll-container">
+            <table class="stats-table" id="stats-table">
+              <thead>
+                <tr>
+                  <th>Classe MapBiomas</th>
+                  <th>ID</th>
+                  <th>Macrogrupo</th>
+                  <th class="num-col">Pixels (30m)</th>
+                  <th class="num-col">Área (ha)</th>
+                  <th class="num-col">Área (km²)</th>
+                  <th class="num-col">% Total</th>
+                  <th>Participação Relativa</th>
+                </tr>
+              </thead>
+              <tbody id="stats-table-body">
+                <!-- Populated via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <div class="modal-footer-source">
+          <span>🛰️ Dados: MapBiomas Coleção 11 (2025) • DEM Copernicus GLO-30 (Resolução 30m) • CRS EPSG:31982 SIRGAS 2000 / UTM 22S</span>
+        </div>
+        <button id="btn-close-stats-footer" class="btn-action" style="max-width: 140px;">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Three.js, Controls and Utilities -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/BufferGeometryUtils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/objects/Sky.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
