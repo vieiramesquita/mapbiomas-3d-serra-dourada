@@ -1,16 +1,21 @@
-# Arquivos Raster GeoTIFF brutos (>100MB excedem o limite de arquivo único do GitHub)
+# Arquivos GeoTIFF brutos (>100MB)
 *.tif
 *.tiff
 
-# Perfis e arquivos temporários de automação/testes
-scratch/chrome_profile*/
-artifacts/scratch/chrome_profile*/
+# Arquivos de histórico, documentação interna e PDFs
+HISTORICO_CONVERSA_MAPBIOMAS3D.md
+*.pdf
+serra_dourada_osm.json
+mapbiomas_col11_legend.json
+
+# Diretórios de artefatos de teste, screenshots e logs
+artifacts/
+scratch/
+scripts/
 .tempmediaStorage/
 node_modules/
 
-# Logs do sistema e temporários
+# Logs e arquivos de sistema
 *.log
 .DS_Store
 Thumbs.db
-artifacts/*.webp
-
