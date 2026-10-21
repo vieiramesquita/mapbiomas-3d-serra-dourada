@@ -21,6 +21,8 @@ const state = {
   baseHeight: 2.82424, // 1:1 Real Metric Scale (699m / 49500m * 200 = 2.82424 Three.js units)
   roads: { enabled: true, tier1: true, tier2: true, tier3: true },
   landmarks: { enabled: true, scale: 1.0 },
+  isNadir: false,
+  lastPerspective: null,
   totalPropsCount: 0,
   activePropsCount: 0,
   visibleChunksCount: 0,
@@ -121,6 +123,13 @@ const statLodProps = document.getElementById('stat-lod-props');
 const statLodSavings = document.getElementById('stat-lod-savings');
 const badgeTerrainLod = document.getElementById('badge-terrain-lod');
 const badgeDataLod = document.getElementById('badge-data-lod');
+
+// Nadir View DOM Elements
+const btnToggleNadir = document.getElementById('btn-toggle-nadir');
+const labelToggleNadir = document.getElementById('label-toggle-nadir');
+const presetNadir = document.getElementById('preset-nadir');
+const nadirFloatingBadge = document.getElementById('nadir-floating-badge');
+const btnExitNadirBadge = document.getElementById('btn-exit-nadir-badge');
 
 // 1. Boot Application
 window.addEventListener('DOMContentLoaded', init);
@@ -2854,8 +2863,92 @@ async function setSatelliteResolution(res) {
   }
 }
 
+// 11.9 Nadir View Mode Manager (Visão Aérea Zenital / Modo Mapa 2D/3D)
+function enterNadirMode() {
+  if (state.isNadir) return;
+  state.isNadir = true;
+
+  // Salva última posição de câmera 3D para restaurar depois
+  state.lastPerspective = {
+    pos: camera.position.clone(),
+    target: controls.target.clone()
+  };
+
+  // Oculta camada de nuvens para garantir imagem de satélite / MapBiomas perfeitamente nítida
+  if (cloudMesh) cloudMesh.visible = false;
+
+  // Atualiza botões e badges
+  if (btnToggleNadir) btnToggleNadir.classList.add('active');
+  if (labelToggleNadir) labelToggleNadir.textContent = '🌐 Vista 3D';
+  if (presetNadir) presetNadir.classList.add('active');
+  if (nadirFloatingBadge) nadirFloatingBadge.style.display = 'flex';
+
+  document.querySelectorAll('.btn-preset').forEach(b => {
+    if (b !== presetNadir) b.classList.remove('active');
+  });
+
+  // Voo suave para o Zênite (Norte para cima, centro em 0,0,0)
+  // Altitude 175 unidades com FOV 40° enquadra todo o relevo (200 x 102.6)
+  animateCamera(0, 175, 0.001, 0, 0, 0, 1300, () => {
+    // No modo mapa zenital, botão esquerdo do mouse faz PAN (estilo GIS / Google Maps)
+    controls.enableRotate = false;
+    controls.mouseButtons.LEFT = THREE.MOUSE.PAN;
+  });
+}
+
+function exitNadirMode(animateBack = true) {
+  if (!state.isNadir) return;
+  state.isNadir = false;
+
+  // Restaura controles 3D completos
+  controls.enableRotate = true;
+  controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
+
+  // Restaura nuvens atmosféricas
+  if (cloudMesh) cloudMesh.visible = true;
+
+  // Atualiza UI
+  if (btnToggleNadir) btnToggleNadir.classList.remove('active');
+  if (labelToggleNadir) labelToggleNadir.textContent = '🛰️ Visão Nadir';
+  if (presetNadir) presetNadir.classList.remove('active');
+  if (nadirFloatingBadge) nadirFloatingBadge.style.display = 'none';
+
+  if (animateBack) {
+    if (state.lastPerspective) {
+      animateCamera(
+        state.lastPerspective.pos.x,
+        state.lastPerspective.pos.y,
+        state.lastPerspective.pos.z,
+        state.lastPerspective.target.x,
+        state.lastPerspective.target.y,
+        state.lastPerspective.target.z,
+        1300
+      );
+    } else {
+      setCameraPreset('panoramica');
+    }
+  }
+}
+
+function toggleNadirMode() {
+  if (state.isNadir) {
+    exitNadirMode(true);
+  } else {
+    enterNadirMode();
+  }
+}
+
 // 12. Camera Presets (Calibrados para Escala 1:1 Real)
 function setCameraPreset(preset) {
+  if (preset === 'nadir') {
+    enterNadirMode();
+    return;
+  }
+
+  if (state.isNadir) {
+    exitNadirMode(false);
+  }
+
   document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
   const btn = document.querySelector(`.btn-preset[data-view="${preset}"]`);
   if (btn) btn.classList.add('active');
@@ -2892,7 +2985,7 @@ function setCameraPreset(preset) {
 
 let activeCameraAnimId = null;
 
-function animateCamera(targetX, targetY, targetZ, lookX, lookY, lookZ, duration = 1200) {
+function animateCamera(targetX, targetY, targetZ, lookX, lookY, lookZ, duration = 1200, onComplete = null) {
   if (activeCameraAnimId) {
     cancelAnimationFrame(activeCameraAnimId);
     activeCameraAnimId = null;
@@ -2918,6 +3011,7 @@ function animateCamera(targetX, targetY, targetZ, lookX, lookY, lookZ, duration 
       activeCameraAnimId = requestAnimationFrame(step);
     } else {
       activeCameraAnimId = null;
+      if (typeof onComplete === 'function') onComplete();
     }
   }
 
@@ -3260,13 +3354,26 @@ function setupEventListeners() {
 
   // Reset view
   btnResetView.addEventListener('click', () => {
+    if (state.isNadir) exitNadirMode(false);
     animateCamera(-30, 22, 60, 10, 1.6, 5);
   });
 
   // Compass widget
   compassWidget.addEventListener('click', () => {
-    animateCamera(0, 32, 65, 0, 1.5, 0);
+    if (state.isNadir) {
+      exitNadirMode(true);
+    } else {
+      animateCamera(0, 32, 65, 0, 1.5, 0);
+    }
   });
+
+  // Nadir View mode listeners
+  if (btnToggleNadir) {
+    btnToggleNadir.addEventListener('click', toggleNadirMode);
+  }
+  if (btnExitNadirBadge) {
+    btnExitNadirBadge.addEventListener('click', () => exitNadirMode(true));
+  }
 
   // Funções de visibilidade dos painéis flutuantes (HUD)
   function hideControlPanel() {

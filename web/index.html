@@ -48,6 +48,14 @@
         <span class="stat-label">Resolução</span>
         <span class="stat-value">30m (Copernicus DEM)</span>
       </div>
+      <button id="btn-toggle-nadir" class="btn-nadir-toggle" title="Alternar Modo Nadir (Visão Aérea Zenital / Modo Mapa 2D/3D)">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="9"/>
+          <path d="M12 3v4M12 17v4M3 12h4M17 12h4"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span id="label-toggle-nadir">🛰️ Visão Nadir</span>
+      </button>
       <button id="btn-open-stats" class="btn-stats-badge" title="Ver Estatísticas Detalhadas de Área e Classes">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/><path d="M4 20h16"/></svg>
         <span>Estatísticas da Área</span>
@@ -65,6 +73,18 @@
       </button>
     </div>
   </header>
+
+  <!-- Floating Toast / Badge when Nadir is Active -->
+  <div id="nadir-floating-badge" class="nadir-floating-badge glass-card" style="display: none;">
+    <div class="nadir-badge-content">
+      <div class="nadir-badge-pulse"></div>
+      <span class="nadir-badge-title">🛰️ Visão Nadir Ativa (Norte ↑)</span>
+      <span class="nadir-badge-desc">Arraste para mover o mapa • Scroll para zoom</span>
+    </div>
+    <button id="btn-exit-nadir-badge" class="btn-nadir-restore" title="Restaurar Perspectiva 3D">
+      <span>↺ Voltar ao 3D</span>
+    </button>
+  </div>
 
   <!-- Left Control Panel (Floating HUD) -->
   <aside class="control-panel glass-card" id="control-panel">
@@ -275,6 +295,7 @@
       <label class="group-label">Ângulos de Câmera & Escala</label>
       <div class="camera-presets">
         <button class="btn-preset" id="btn-scale-1to1" style="grid-column: span 2; margin-bottom: 4px; border-color: rgba(16, 185, 129, 0.5); background: rgba(16, 185, 129, 0.15); color: #fff; font-weight: 600;">🎯 Resetar para Escala 1:1 Real</button>
+        <button class="btn-preset btn-preset-nadir" data-view="nadir" id="preset-nadir" style="grid-column: span 2; margin-bottom: 4px;">🛰️ Visão Nadir (Aérea / Mapa Zenital)</button>
         <button class="btn-preset active" data-view="crista" id="preset-crista">Crista (Rochas)</button>
         <button class="btn-preset" data-view="rebanho" id="preset-rebanho">Rebanho no Pasto 🐄</button>
         <button class="btn-preset" data-view="maquinario" id="preset-maquinario">Colheitadeiras & Tratores 🚜</button>
