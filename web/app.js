@@ -19,6 +19,20 @@ const state = {
   demDimensions: { width: 1650, height: 847 },
   terrainSpan: { width: 200, height: 102.6 },
   baseHeight: 2.82424, // 1:1 Real Metric Scale (699m / 49500m * 200 = 2.82424 Three.js units)
+  roads: { enabled: true, tier1: true, tier2: true, tier3: true },
+  landmarks: { enabled: true, scale: 1.0 },
+  totalPropsCount: 0,
+  activePropsCount: 0,
+  visibleChunksCount: 0,
+  terrainLod: 'ultra', // 'ultra' (825x423), 'balanced' (412x211), 'fast' (206x105)
+  dataLod: 'full', // 'full' (30m) or 'lod1' (meia-resolução)
+  lodChunks: [],
+  lod: {
+    enabled: true,
+    frustumCulling: true,
+    nearDistance: 35.0, // < 35 units = LOD 0 (3D Sólido completo + micro-props)
+    farDistance: 70.0   // 35-70 units = LOD 1 (Impostores 2.5D), > 70 units = LOD 2
+  },
   props: {
     enabled: true,
     castShadows: true,
@@ -85,9 +99,28 @@ const checkPropsShadows = document.getElementById('check-props-shadows');
 const sliderPropScale = document.getElementById('slider-prop-scale');
 const valPropScale = document.getElementById('val-prop-scale');
 const badgePropsCount = document.getElementById('badge-props-count');
-const btnIncreaseDensity = document.getElementById('btn-increase-density');
+const sliderPropDensity = document.getElementById('slider-prop-density');
+const sliderPropDensitySettings = document.getElementById('slider-prop-density-settings');
 const valPropDensity = document.getElementById('val-prop-density');
-const badgeDensityNext = document.getElementById('badge-density-next');
+const valPropDensitySettings = document.getElementById('val-prop-density-settings');
+const badgeDensityMultiplier = document.getElementById('badge-density-multiplier');
+const densityHelperText = document.getElementById('density-helper-text');
+
+// Settings Panel DOM Elements
+const settingsPanel = document.getElementById('settings-panel');
+const btnOpenSettings = document.getElementById('btn-open-settings');
+const btnOpenSettingsSide = document.getElementById('btn-open-settings-side');
+const btnCloseSettings = document.getElementById('btn-close-settings');
+
+// LOD DOM Elements
+const checkLodEnabled = document.getElementById('check-lod-enabled');
+const checkLodFrustum = document.getElementById('check-lod-frustum');
+const badgeLodMode = document.getElementById('badge-lod-mode');
+const statLodChunks = document.getElementById('stat-lod-chunks');
+const statLodProps = document.getElementById('stat-lod-props');
+const statLodSavings = document.getElementById('stat-lod-savings');
+const badgeTerrainLod = document.getElementById('badge-terrain-lod');
+const badgeDataLod = document.getElementById('badge-data-lod');
 
 // 1. Boot Application
 window.addEventListener('DOMContentLoaded', init);
@@ -119,8 +152,13 @@ async function init() {
     updateProgress(82, 'Construindo terreno 3D e calculando normais...');
     buildTerrainMesh();
 
-    updateProgress(92, 'Distribuindo vegetação, rochas e props 3D procedurais...');
+    updateProgress(90, 'Distribuindo vegetação, rochas e props 3D procedurais...');
     buildPropsMeshes();
+
+    updateProgress(95, 'Carregando malha viária, trilhas e marcos históricos 3D...');
+    await loadRoadsNetwork();
+    await loadOSMLandmarks();
+    await loadParqueBoundary();
 
     updateProgress(100, 'Pronto!');
     setTimeout(() => {
@@ -496,6 +534,28 @@ async function loadTextures() {
 
   // Procedural detail normal map for micro-topography & pasture grass relief
   textures.normalDetail = generateTerrainNormalMap();
+
+  // Load High-Res Impostor Textures for Hierarchical LOD (2.5D Billboards)
+  textures.impostors = {};
+  const impostorList = [
+    { key: 'forest', file: 'tree_tropical.png' },
+    { key: 'cerrado_tree', file: 'tree_cerrado.png' },
+    { key: 'cerrado_shrub', file: 'shrub_cerrado.png' },
+    { key: 'silviculture', file: 'tree_eucalyptus.png' },
+    { key: 'rocks', file: 'rock_rupestre.png' }
+  ];
+
+  await Promise.all(impostorList.map(async item => {
+    try {
+      const tex = await loadTex(`public/impostors/${item.file}`);
+      tex.generateMipmaps = true;
+      tex.minFilter = THREE.LinearMipmapLinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      textures.impostors[item.key] = tex;
+    } catch (err) {
+      console.warn(`Impostor texture ${item.file} não carregada:`, err);
+    }
+  }));
 }
 
 function generateHypsometricTexture() {
@@ -587,17 +647,28 @@ function getBilinearElevation(normU, normV, demW, demH) {
 }
 
 // 7. Build 3D Terrain Meshes (Base Satellite + Overlaid MapBiomas)
-// Malha de alta fidelidade: 825x423 segmentos (350.000+ vértices) para reproduzir microtopografia nítida
-function buildTerrainMesh() {
-  const segW = 825;
-  const segH = 423;
+// Suporta LOD Dinâmico de Malha: Ultra (825x423), Equilibrado (412x211), Leve (206x105)
+function buildTerrainMesh(customSegW, customSegH) {
+  let segW = customSegW;
+  let segH = customSegH;
+
+  if (!segW || !segH) {
+    if (state.terrainLod === 'balanced') {
+      segW = 412; segH = 211;
+    } else if (state.terrainLod === 'fast') {
+      segW = 206; segH = 105;
+    } else {
+      segW = 825; segH = 423;
+    }
+  }
+
   const geoW = state.terrainSpan.width;
   const geoH = state.terrainSpan.height;
 
-  terrainGeometry = new THREE.PlaneGeometry(geoW, geoH, segW, segH);
-  terrainGeometry.rotateX(-Math.PI / 2);
+  const newGeometry = new THREE.PlaneGeometry(geoW, geoH, segW, segH);
+  newGeometry.rotateX(-Math.PI / 2);
 
-  const posAttr = terrainGeometry.attributes.position;
+  const posAttr = newGeometry.attributes.position;
   const count = posAttr.count;
 
   const demW = state.demDimensions.width;
@@ -614,7 +685,17 @@ function buildTerrainMesh() {
   }
 
   posAttr.needsUpdate = true;
-  terrainGeometry.computeVertexNormals();
+  newGeometry.computeVertexNormals();
+
+  if (terrainGeometry) terrainGeometry.dispose();
+  terrainGeometry = newGeometry;
+
+  if (terrainMesh && overlayMesh) {
+    terrainMesh.geometry = terrainGeometry;
+    overlayMesh.geometry = terrainGeometry;
+    buildTerrainSkirt();
+    return;
+  }
 
   // Base Terrain Mesh (Satellite)
   const baseMat = new THREE.MeshStandardMaterial({
@@ -694,6 +775,23 @@ function createColoredGeometry(parts) {
     }
   }
   return nonIndexedParts[0];
+}
+
+// Gerador de Geometria Impostor Cross-Quad (LOD 1 & 2): 2 planos verticais ortogonais em "X"
+function createCrossQuadGeometry(w, h) {
+  const g1 = new THREE.PlaneGeometry(w, h);
+  g1.translate(0, h / 2, 0);
+  const g2 = new THREE.PlaneGeometry(w, h);
+  g2.rotateY(Math.PI / 2);
+  g2.translate(0, h / 2, 0);
+  if (window.THREE && THREE.BufferGeometryUtils && THREE.BufferGeometryUtils.mergeBufferGeometries) {
+    const merged = THREE.BufferGeometryUtils.mergeBufferGeometries([g1, g2], false);
+    if (merged) {
+      merged.computeVertexNormals();
+      return merged;
+    }
+  }
+  return g1;
 }
 
 // 1. Árvore da Mata Tropical / Floresta Estacional & Galeria (ID 3)
@@ -2234,68 +2332,238 @@ function buildPropsMeshes() {
     flatShading: true
   });
 
-  // 1. Mata Tropical (Dossel 3D volumétrico multi-camadas)
-  setupInstancedSolidLayer('forest', 'forest', createTropicalTree3DGeo(), botanicalMat, forestItems);
+  // Materiais Impostores 2.5D (LOD 1 & 2) com AlphaTest
+  const impostorMats = {
+    forest: textures.impostors && textures.impostors.forest ? new THREE.MeshStandardMaterial({
+      map: textures.impostors.forest,
+      alphaTest: 0.45,
+      roughness: 0.8,
+      metalness: 0.04,
+      side: THREE.DoubleSide
+    }) : botanicalMat,
+    cerrado_tree: textures.impostors && textures.impostors.cerrado_tree ? new THREE.MeshStandardMaterial({
+      map: textures.impostors.cerrado_tree,
+      alphaTest: 0.45,
+      roughness: 0.8,
+      metalness: 0.04,
+      side: THREE.DoubleSide
+    }) : botanicalMat,
+    cerrado_shrub: textures.impostors && textures.impostors.cerrado_shrub ? new THREE.MeshStandardMaterial({
+      map: textures.impostors.cerrado_shrub,
+      alphaTest: 0.45,
+      roughness: 0.8,
+      metalness: 0.04,
+      side: THREE.DoubleSide
+    }) : botanicalMat,
+    silviculture: textures.impostors && textures.impostors.silviculture ? new THREE.MeshStandardMaterial({
+      map: textures.impostors.silviculture,
+      alphaTest: 0.45,
+      roughness: 0.8,
+      metalness: 0.04,
+      side: THREE.DoubleSide
+    }) : botanicalMat,
+    rocks: textures.impostors && textures.impostors.rocks ? new THREE.MeshStandardMaterial({
+      map: textures.impostors.rocks,
+      alphaTest: 0.45,
+      roughness: 0.85,
+      metalness: 0.08,
+      side: THREE.DoubleSide
+    }) : rockMat
+  };
 
-  // 2. Cerrado - Árvores tortuosas (Tronco retorcido + copa aberta)
-  setupInstancedSolidLayer('cerrado_trees', 'cerrado', createCerradoTree3DGeo(), botanicalMat, cerradoTreeItems);
+  const impostorGeos = {
+    forest: createCrossQuadGeometry(0.048, 0.085),
+    cerrado_tree: createCrossQuadGeometry(0.038, 0.042),
+    cerrado_shrub: createCrossQuadGeometry(0.025, 0.020),
+    silviculture: createCrossQuadGeometry(0.022, 0.075),
+    rocks: createCrossQuadGeometry(0.035, 0.025)
+  };
 
-  // 2. Cerrado - Arbustos densos (Moitas 3D volumétricas)
-  setupInstancedSolidLayer('cerrado_shrubs', 'cerrado', createCerradoShrub3DGeo(), botanicalMat, cerradoShrubItems);
+  // 1. Definições de Todas as Camadas Ecológicas e Objetos
+  const layerDefs = [
+    { key: 'forest', category: 'forest', type: 'botanical', geo: createTropicalTree3DGeo(), mat: botanicalMat, impostorGeo: impostorGeos.forest, impostorMat: impostorMats.forest, items: forestItems },
+    { key: 'cerrado_trees', category: 'cerrado', type: 'botanical', geo: createCerradoTree3DGeo(), mat: botanicalMat, impostorGeo: impostorGeos.cerrado_tree, impostorMat: impostorMats.cerrado_tree, items: cerradoTreeItems },
+    { key: 'cerrado_shrubs', category: 'cerrado', type: 'botanical', geo: createCerradoShrub3DGeo(), mat: botanicalMat, impostorGeo: impostorGeos.cerrado_shrub, impostorMat: impostorMats.cerrado_shrub, items: cerradoShrubItems },
+    { key: 'rocks', category: 'rocks', type: 'rock', geo: createQuartziteRock3DGeo(), mat: rockMat, impostorGeo: impostorGeos.rocks, impostorMat: impostorMats.rocks, items: rocksItems },
+    { key: 'pasture', category: 'pasture', type: 'micro', geo: create3DPastureTuftGeo(), mat: pastureMat, items: pastureItems },
+    { key: 'silviculture', category: 'silviculture', type: 'botanical', geo: createEucalyptus3DGeo(), mat: botanicalMat, impostorGeo: impostorGeos.silviculture, impostorMat: impostorMats.silviculture, items: silvicultureItems },
+    { key: 'grassland', category: 'grassland', type: 'micro', geo: createGrasslandNative3DGeo(), mat: pastureMat, items: grasslandItems },
+    { key: 'urban_houses_white', category: 'urban', type: 'landmark', geo: createDetailedColonialHouseGeo(0), mat: urbanMat, items: urbanHousesWhite },
+    { key: 'urban_houses_ochre', category: 'urban', type: 'landmark', geo: createDetailedColonialHouseGeo(1), mat: urbanMat, items: urbanHousesOchre },
+    { key: 'urban_houses_green', category: 'urban', type: 'landmark', geo: createDetailedColonialHouseGeo(2), mat: urbanMat, items: urbanHousesGreen },
+    { key: 'urban_houses_rose',  category: 'urban', type: 'landmark', geo: createDetailedColonialHouseGeo(3), mat: urbanMat, items: urbanHousesRose },
+    { key: 'urban_sobrados',      category: 'urban', type: 'landmark', geo: createDetailedColonialSobradoGeo(0), mat: urbanMat, items: urbanSobrados },
+    { key: 'urban_sobrados_ochre',category: 'urban', type: 'landmark', geo: createDetailedColonialSobradoGeo(1), mat: urbanMat, items: urbanSobradosOchre },
+    { key: 'urban_churches',      category: 'urban', type: 'landmark', geo: createDetailedColonialChurchGeo(), mat: urbanMat, items: urbanChurches },
+    { key: 'urban_lanterns',      category: 'urban', type: 'landmark', geo: createColonialLanternGeo(), mat: urbanMat, items: urbanLanterns },
+    { key: 'urban_trees_green',      category: 'urban', type: 'landmark', geo: createColonialYardTreeGeo('green'),      mat: botanicalMat, items: urbanTreesGreen },
+    { key: 'urban_trees_deep_green', category: 'urban', type: 'landmark', geo: createColonialYardTreeGeo('deep_green'), mat: botanicalMat, items: urbanTreesDeepGreen },
+    { key: 'urban_trees_yellow',     category: 'urban', type: 'landmark', geo: createColonialYardTreeGeo('yellow'),     mat: botanicalMat, items: urbanTreesYellow },
+    { key: 'urban_trees_pink',       category: 'urban', type: 'landmark', geo: createColonialYardTreeGeo('pink'),       mat: botanicalMat, items: urbanTreesPink },
+    { key: 'soybean', category: 'soybean', type: 'botanical', geo: createSoybeanCrop3DGeo(), mat: botanicalMat, items: soybeanItems },
+    { key: 'tempcrops', category: 'tempcrops', type: 'botanical', geo: createTemporaryCrop3DGeo(), mat: botanicalMat, items: tempCropsItems },
+    { key: 'wetland', category: 'wetland', type: 'landmark', geo: createBuritiPalm3DGeo(), mat: botanicalMat, items: wetlandItems },
+    { key: 'bare', category: 'bare', type: 'rock', geo: createBareGround3DGeo(), mat: rockMat, items: bareItems },
+    { key: 'water', category: 'water', type: 'rock', geo: createRiverBank3DGeo(), mat: rockMat, items: waterItems },
+    { key: 'cattle_nelore', category: 'cattle', type: 'landmark', geo: createNeloreCowGeo('nelore'), mat: rockMat, items: cattleNeloreItems },
+    { key: 'cattle_spotted', category: 'cattle', type: 'landmark', geo: createNeloreCowGeo('spotted'), mat: rockMat, items: cattleSpottedItems },
+    { key: 'cattle_brown', category: 'cattle', type: 'landmark', geo: createNeloreCowGeo('brown'), mat: rockMat, items: cattleBrownItems },
+    { key: 'horses', category: 'cattle', type: 'landmark', geo: createHorseGeo(), mat: rockMat, items: horseItems },
+    { key: 'tractors_green', category: 'machinery', type: 'landmark', geo: createTractorGeo(true), mat: urbanMat, items: tractorsGreenItems },
+    { key: 'tractors_red', category: 'machinery', type: 'landmark', geo: createTractorGeo(false), mat: urbanMat, items: tractorsRedItems },
+    { key: 'harvesters', category: 'machinery', type: 'landmark', geo: createHarvesterGeo(), mat: urbanMat, items: harvesterItems }
+  ];
 
-  // 3. Rochas de Quartzito & Campo Rupestre (Blocos geológicos facetados + Vellozia)
-  setupInstancedSolidLayer('rocks', 'rocks', createQuartziteRock3DGeo(), rockMat, rocksItems);
+  // 2. Inicialização dos 32 Chunks Espaciais (Grade 8x4)
+  const CHUNK_COLS = 8;
+  const CHUNK_ROWS = 4;
+  state.lodChunks = [];
+  const chunkItemBuckets = [];
 
-  // 4. Pastagem / Capim Braquiária (Campo denso volumétrico de pasto)
-  setupInstancedSolidLayer('pasture', 'pasture', create3DPastureTuftGeo(), pastureMat, pastureItems);
+  for (let ry = 0; ry < CHUNK_ROWS; ry++) {
+    for (let cx = 0; cx < CHUNK_COLS; cx++) {
+      const idx = ry * CHUNK_COLS + cx;
+      const x0 = (cx / CHUNK_COLS - 0.5) * geoW;
+      const x1 = ((cx + 1) / CHUNK_COLS - 0.5) * geoW;
+      const z0 = (ry / CHUNK_ROWS - 0.5) * geoH;
+      const z1 = ((ry + 1) / CHUNK_ROWS - 0.5) * geoH;
 
-  // 5. Silvicultura / Eucalipto (Árvores esguias em linhas)
-  setupInstancedSolidLayer('silviculture', 'silviculture', createEucalyptus3DGeo(), botanicalMat, silvicultureItems);
+      const chunkGroup = new THREE.Group();
+      const solidGroup = new THREE.Group();
+      const impostorGroup = new THREE.Group();
+      const microGroup = new THREE.Group();
+      const landmarkGroup = new THREE.Group();
 
-  // 6. Campo Nativo (Gramíneas nativas com plumas campestres 3D)
-  setupInstancedSolidLayer('grassland', 'grassland', createGrasslandNative3DGeo(), pastureMat, grasslandItems);
+      chunkGroup.add(solidGroup);
+      chunkGroup.add(impostorGroup);
+      chunkGroup.add(microGroup);
+      chunkGroup.add(landmarkGroup);
 
-  // 7. Estruturas Arquitetônicas Coloniais Reais de Goiás Velho (Casas Térreas Coloridas, Sobrados com Sacadas, Igreja Barroca, Lampiões e Ipês)
-  setupInstancedSolidLayer('urban_houses_white', 'urban', createDetailedColonialHouseGeo(0), urbanMat, urbanHousesWhite);
-  setupInstancedSolidLayer('urban_houses_ochre', 'urban', createDetailedColonialHouseGeo(1), urbanMat, urbanHousesOchre);
-  setupInstancedSolidLayer('urban_houses_green', 'urban', createDetailedColonialHouseGeo(2), urbanMat, urbanHousesGreen);
-  setupInstancedSolidLayer('urban_houses_rose',  'urban', createDetailedColonialHouseGeo(3), urbanMat, urbanHousesRose);
-  setupInstancedSolidLayer('urban_sobrados',      'urban', createDetailedColonialSobradoGeo(0), urbanMat, urbanSobrados);
-  setupInstancedSolidLayer('urban_sobrados_ochre','urban', createDetailedColonialSobradoGeo(1), urbanMat, urbanSobradosOchre);
-  setupInstancedSolidLayer('urban_churches',      'urban', createDetailedColonialChurchGeo(), urbanMat, urbanChurches);
-  setupInstancedSolidLayer('urban_lanterns',          'urban', createColonialLanternGeo(), urbanMat, urbanLanterns);
-  setupInstancedSolidLayer('urban_trees_green',      'urban', createColonialYardTreeGeo('green'),      botanicalMat, urbanTreesGreen);
-  setupInstancedSolidLayer('urban_trees_deep_green', 'urban', createColonialYardTreeGeo('deep_green'), botanicalMat, urbanTreesDeepGreen);
-  setupInstancedSolidLayer('urban_trees_yellow',     'urban', createColonialYardTreeGeo('yellow'),     botanicalMat, urbanTreesYellow);
-  setupInstancedSolidLayer('urban_trees_pink',       'urban', createColonialYardTreeGeo('pink'),       botanicalMat, urbanTreesPink);
+      impostorGroup.visible = false; // Começa com LOD0 ativo próximo à câmera
 
-  // 8. Soja (3.2.1.1)
-  setupInstancedSolidLayer('soybean', 'soybean', createSoybeanCrop3DGeo(), botanicalMat, soybeanItems);
+      propsGroup.add(chunkGroup);
 
-  // 9. Outras Lavouras Temporárias (3.2.1.5)
-  setupInstancedSolidLayer('tempcrops', 'tempcrops', createTemporaryCrop3DGeo(), botanicalMat, tempCropsItems);
+      state.lodChunks.push({
+        id: `chunk_${cx}_${ry}`,
+        index: idx,
+        col: cx,
+        row: ry,
+        box: new THREE.Box3(
+          new THREE.Vector3(x0, -1, z0),
+          new THREE.Vector3(x1, state.baseHeight * state.exaggeration + 1.5, z1)
+        ),
+        center: new THREE.Vector3((x0 + x1) / 2, (state.baseHeight * state.exaggeration) / 2, (z0 + z1) / 2),
+        group: chunkGroup,
+        solidGroup,
+        impostorGroup,
+        microGroup,
+        landmarkGroup,
+        layers: {},
+        solidCount: 0,
+        impostorCount: 0,
+        microCount: 0,
+        landmarkCount: 0
+      });
 
-  // 10. Campo Alagado e Veredas de Buriti (2.3)
-  setupInstancedSolidLayer('wetland', 'wetland', createBuritiPalm3DGeo(), botanicalMat, wetlandItems);
+      chunkItemBuckets.push({});
+    }
+  }
 
-  // 11. Solo Exposto & Não Vegetado (4.6)
-  setupInstancedSolidLayer('bare', 'bare', createBareGround3DGeo(), rockMat, bareItems);
+  // 3. Distribuição Espacial dos Elementos nos Chunks
+  function getChunkIndex(x, z) {
+    const u = (x / geoW) + 0.5;
+    const v = (z / geoH) + 0.5;
+    const cx = Math.max(0, Math.min(CHUNK_COLS - 1, Math.floor(u * CHUNK_COLS)));
+    const cy = Math.max(0, Math.min(CHUNK_ROWS - 1, Math.floor(v * CHUNK_ROWS)));
+    return cy * CHUNK_COLS + cx;
+  }
 
-  // 12. Rios e Margens Ripárias (5.1)
-  setupInstancedSolidLayer('water', 'water', createRiverBank3DGeo(), rockMat, waterItems);
+  for (const def of layerDefs) {
+    propLayers[def.key] = { category: def.category, items: def.items };
+    for (let i = 0; i < def.items.length; i++) {
+      const it = def.items[i];
+      const chIdx = getChunkIndex(it.x, it.z);
+      if (!chunkItemBuckets[chIdx][def.key]) {
+        chunkItemBuckets[chIdx][def.key] = [];
+      }
+      chunkItemBuckets[chIdx][def.key].push(it);
+    }
+  }
 
-  // 13. Rebanho Bovino (Vaquinhas Nelore brancas, malhadas P&B e girolando castanhas)
-  setupInstancedSolidLayer('cattle_nelore',  'cattle', createNeloreCowGeo('nelore'),  rockMat, cattleNeloreItems);
-  setupInstancedSolidLayer('cattle_spotted', 'cattle', createNeloreCowGeo('spotted'), rockMat, cattleSpottedItems);
-  setupInstancedSolidLayer('cattle_brown',   'cattle', createNeloreCowGeo('brown'),   rockMat, cattleBrownItems);
+  // 4. Instanciação Otimizada por Chunk com Suporte a LOD0 (3D Sólido) e LOD1 (Impostor)
+  const dummy = new THREE.Object3D();
+  const s = state.props.scale;
 
-  // 14. Cavalos nas Pastagens
-  setupInstancedSolidLayer('horses', 'cattle', createHorseGeo(), rockMat, horseItems);
+  for (let chIdx = 0; chIdx < state.lodChunks.length; chIdx++) {
+    const chunk = state.lodChunks[chIdx];
+    const buckets = chunkItemBuckets[chIdx];
 
-  // 15. Maquinário Agrícola (Tratores verdes John Deere / vermelhos Case e Colheitadeiras Draper)
-  setupInstancedSolidLayer('tractors_green', 'machinery', createTractorGeo(true),  urbanMat, tractorsGreenItems);
-  setupInstancedSolidLayer('tractors_red',   'machinery', createTractorGeo(false), urbanMat, tractorsRedItems);
-  setupInstancedSolidLayer('harvesters',     'machinery', createHarvesterGeo(),    urbanMat, harvesterItems);
+    for (const def of layerDefs) {
+      const items = buckets[def.key];
+      if (!items || items.length === 0) continue;
+
+      const layerData = {
+        category: def.category,
+        type: def.type,
+        items: items,
+        solidMesh: null,
+        impostorMesh: null
+      };
+
+      // 4.1 Malha Sólida (LOD 0)
+      if (def.geo) {
+        const solidMesh = new THREE.InstancedMesh(def.geo, def.mat, items.length);
+        solidMesh.castShadow = state.props.castShadows;
+        solidMesh.receiveShadow = false;
+        solidMesh.visible = state.props.categories[def.category] && state.props.enabled;
+
+        for (let i = 0; i < items.length; i++) {
+          const it = items[i];
+          dummy.position.set(it.x, it.elev * state.baseHeight * state.exaggeration + (it.offsetY || 0), it.z);
+          dummy.rotation.set(it.tiltX || 0, it.rotY, it.tiltZ || 0);
+          dummy.scale.set(it.scaleX * s, it.scaleY * s, it.scaleZ * s);
+          dummy.updateMatrix();
+          solidMesh.setMatrixAt(i, dummy.matrix);
+        }
+        solidMesh.instanceMatrix.needsUpdate = true;
+        layerData.solidMesh = solidMesh;
+
+        if (def.type === 'micro') {
+          chunk.microGroup.add(solidMesh);
+          chunk.microCount += items.length;
+        } else if (def.type === 'landmark') {
+          chunk.landmarkGroup.add(solidMesh);
+          chunk.landmarkCount += items.length;
+        } else {
+          chunk.solidGroup.add(solidMesh);
+          chunk.solidCount += items.length;
+        }
+      }
+
+      // 4.2 Malha Impostor 2.5D (LOD 1 & 2 para árvores e rochas)
+      if (def.impostorGeo && def.impostorMat) {
+        const impostorMesh = new THREE.InstancedMesh(def.impostorGeo, def.impostorMat, items.length);
+        impostorMesh.castShadow = false; // Impostores distantes dispensam mapa de sombras caro
+        impostorMesh.receiveShadow = false;
+        impostorMesh.visible = state.props.categories[def.category] && state.props.enabled;
+
+        for (let i = 0; i < items.length; i++) {
+          const it = items[i];
+          dummy.position.set(it.x, it.elev * state.baseHeight * state.exaggeration + (it.offsetY || 0), it.z);
+          dummy.rotation.set(it.tiltX || 0, it.rotY, it.tiltZ || 0);
+          dummy.scale.set(it.scaleX * s, it.scaleY * s, it.scaleZ * s);
+          dummy.updateMatrix();
+          impostorMesh.setMatrixAt(i, dummy.matrix);
+        }
+        impostorMesh.instanceMatrix.needsUpdate = true;
+        layerData.impostorMesh = impostorMesh;
+        chunk.impostorGroup.add(impostorMesh);
+        chunk.impostorCount += items.length;
+      }
+
+      chunk.layers[def.key] = layerData;
+    }
+  }
 
   const totalProps = forestItems.length + cerradoTreeItems.length + cerradoShrubItems.length +
                      rocksItems.length + pastureItems.length + silvicultureItems.length +
@@ -2308,65 +2576,57 @@ function buildPropsMeshes() {
                      cattleNeloreItems.length + cattleSpottedItems.length + cattleBrownItems.length +
                      horseItems.length + tractorsGreenItems.length + tractorsRedItems.length + harvesterItems.length;
 
+  state.totalPropsCount = totalProps;
+
   if (badgePropsCount) {
     badgePropsCount.textContent = totalProps.toLocaleString('pt-BR') + ' objetos 3D';
   }
+
+  updateLODVisibility(true);
 }
 
-function setupInstancedSolidLayer(layerKey, categoryKey, geometry, material, items) {
-  if (!items.length) return;
-  const mesh = new THREE.InstancedMesh(geometry, material, items.length);
-  mesh.castShadow = state.props.castShadows;
-  mesh.receiveShadow = false;
-
-  const dummy = new THREE.Object3D();
-  const s = state.props.scale;
-  for (let i = 0; i < items.length; i++) {
-    const it = items[i];
-    dummy.position.set(it.x, it.elev * state.baseHeight * state.exaggeration + (it.offsetY || 0), it.z);
-    dummy.rotation.set(it.tiltX || 0, it.rotY, it.tiltZ || 0);
-    dummy.scale.set(it.scaleX * s, it.scaleY * s, it.scaleZ * s);
-    dummy.updateMatrix();
-    mesh.setMatrixAt(i, dummy.matrix);
-  }
-
-  mesh.instanceMatrix.needsUpdate = true;
-  mesh.visible = state.props.categories[categoryKey] && state.props.enabled;
-  propsGroup.add(mesh);
-
-  propLayers[layerKey] = { mesh, items, category: categoryKey };
-}
-
-// 9. Update Props Transforms (Exaggeration & Scale)
+// 9. Atualização de Transformações de Props nos Chunks (Exagero & Escala)
 function updatePropsTransforms() {
-  if (!propsGroup) return;
+  if (!propsGroup || !state.lodChunks) return;
   const dummy = new THREE.Object3D();
   const s = state.props.scale;
 
-  for (const key of Object.keys(propLayers)) {
-    const layer = propLayers[key];
-    const mesh = layer.mesh;
-    const items = layer.items;
+  for (let chIdx = 0; chIdx < state.lodChunks.length; chIdx++) {
+    const chunk = state.lodChunks[chIdx];
+    chunk.box.min.y = -0.5;
+    chunk.box.max.y = state.baseHeight * state.exaggeration + 1.5;
+    chunk.center.y = (state.baseHeight * state.exaggeration) / 2;
 
-    for (let i = 0; i < items.length; i++) {
-      const it = items[i];
-      dummy.position.set(it.x, it.elev * state.baseHeight * state.exaggeration + (it.offsetY || 0), it.z);
-      dummy.rotation.set(it.tiltX || 0, it.rotY, it.tiltZ || 0);
-      dummy.scale.set(it.scaleX * s, it.scaleY * s, it.scaleZ * s);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
+    for (const key of Object.keys(chunk.layers)) {
+      const layer = chunk.layers[key];
+      const items = layer.items;
+      const solidMesh = layer.solidMesh;
+      const impostorMesh = layer.impostorMesh;
+
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        dummy.position.set(it.x, it.elev * state.baseHeight * state.exaggeration + (it.offsetY || 0), it.z);
+        dummy.rotation.set(it.tiltX || 0, it.rotY, it.tiltZ || 0);
+        dummy.scale.set(it.scaleX * s, it.scaleY * s, it.scaleZ * s);
+        dummy.updateMatrix();
+
+        if (solidMesh) solidMesh.setMatrixAt(i, dummy.matrix);
+        if (impostorMesh) impostorMesh.setMatrixAt(i, dummy.matrix);
+      }
+
+      if (solidMesh) solidMesh.instanceMatrix.needsUpdate = true;
+      if (impostorMesh) impostorMesh.instanceMatrix.needsUpdate = true;
     }
-    mesh.instanceMatrix.needsUpdate = true;
   }
 }
 
-// 10. Update Exaggeration Dynamically (Terrain + Props)
+// 10. Atualização do Exagero Vertical Dinâmico (Relevo + Props)
 function updateExaggeration(val) {
   state.exaggeration = val;
   if (!terrainGeometry || !rawElevations) return;
 
-  const segW = 825;
-  const segH = 423;
+  const segW = terrainGeometry.parameters ? terrainGeometry.parameters.widthSegments : 825;
+  const segH = terrainGeometry.parameters ? terrainGeometry.parameters.heightSegments : 423;
   const demW = state.demDimensions.width;
   const demH = state.demDimensions.height;
   const posAttr = terrainGeometry.attributes.position;
@@ -2386,6 +2646,116 @@ function updateExaggeration(val) {
   terrainGeometry.computeVertexNormals();
 
   updatePropsTransforms();
+  updateRoadsElevation();
+  updateOSMLandmarksElevation();
+  updateParqueBoundaryElevation();
+  updateSkirtElevation();
+  updateLODVisibility(true);
+}
+
+// 10.1 Gerenciador de LOD Inteligente (Frustum Culling + Transição por Distância de Chunks)
+const lodFrustum = new THREE.Frustum();
+const lodProjMatrix = new THREE.Matrix4();
+let lastLODCheckTime = 0;
+
+function updateLODVisibility(force = false) {
+  if (!state.lodChunks || !state.lodChunks.length || !camera) return;
+
+  const now = performance.now();
+  if (!force && now - lastLODCheckTime < 45) return; // Limita a ~22 verificações/segundo para 60 FPS estáveis
+  lastLODCheckTime = now;
+
+  let visibleChunks = 0;
+  let activeProps = 0;
+  const totalProps = state.totalPropsCount || 1;
+
+  if (!state.lod.enabled) {
+    // Modo Bruto (LOD Desativado): Desenha tudo em 3D sólido sem descarte
+    for (let i = 0; i < state.lodChunks.length; i++) {
+      const ch = state.lodChunks[i];
+      ch.group.visible = true;
+      ch.solidGroup.visible = true;
+      ch.impostorGroup.visible = false;
+      ch.microGroup.visible = true;
+      ch.landmarkGroup.visible = true;
+      activeProps += ch.solidCount + ch.microCount + ch.landmarkCount;
+      visibleChunks++;
+    }
+  } else {
+    // LOD Inteligente Ativo: Frustum Culling + Transição Distante
+    lodProjMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    lodFrustum.setFromProjectionMatrix(lodProjMatrix);
+
+    const camPos = camera.position;
+    const nearSq = state.lod.nearDistance * state.lod.nearDistance;
+    const farSq = state.lod.farDistance * state.lod.farDistance;
+
+    for (let i = 0; i < state.lodChunks.length; i++) {
+      const ch = state.lodChunks[i];
+
+      // 1. Frustum Culling do Chunk
+      if (state.lod.frustumCulling && !lodFrustum.intersectsBox(ch.box)) {
+        ch.group.visible = false;
+        continue;
+      }
+
+      ch.group.visible = true;
+      visibleChunks++;
+
+      // 2. Avaliação de Distância do Chunk à Câmera
+      const distSq = camPos.distanceToSquared(ch.center);
+
+      if (distSq < nearSq) {
+        // LOD 0: Perto (< 35m) -> 3D Sólido completo + micro-props
+        ch.solidGroup.visible = true;
+        ch.impostorGroup.visible = false;
+        ch.microGroup.visible = true;
+        ch.landmarkGroup.visible = true;
+        activeProps += ch.solidCount + ch.microCount + ch.landmarkCount;
+      } else if (distSq < farSq) {
+        // LOD 1: Médio (35 a 70m) -> Impostores 2.5D cross-quads, micro-props ocultos
+        ch.solidGroup.visible = false;
+        ch.impostorGroup.visible = true;
+        ch.microGroup.visible = false;
+        ch.landmarkGroup.visible = true;
+        activeProps += ch.impostorCount + ch.landmarkCount;
+      } else {
+        // LOD 2: Longe (> 70m) -> Apenas impostores essenciais e marcos
+        ch.solidGroup.visible = false;
+        ch.impostorGroup.visible = true;
+        ch.microGroup.visible = false;
+        ch.landmarkGroup.visible = true;
+        activeProps += ch.impostorCount + ch.landmarkCount;
+      }
+    }
+  }
+
+  state.visibleChunksCount = visibleChunks;
+  state.activePropsCount = activeProps;
+
+  // Atualização em tempo real das métricas do HUD
+  if (statLodChunks) statLodChunks.textContent = `${visibleChunks} / ${state.lodChunks.length}`;
+  if (statLodProps) statLodProps.textContent = `${activeProps.toLocaleString('pt-BR')}`;
+  if (statLodSavings && totalProps > 0) {
+    const savingsPct = Math.max(0, Math.min(99, Math.round((1 - activeProps / totalProps) * 100)));
+    statLodSavings.textContent = `-${savingsPct}%`;
+  }
+}
+
+// Atualização de Visibilidade por Categoria em todos os Chunks
+function updateCategoryVisibility(catKey) {
+  if (!state.lodChunks) return;
+  const isVis = state.props.categories[catKey] && state.props.enabled;
+  for (const chunk of state.lodChunks) {
+    for (const key of Object.keys(chunk.layers)) {
+      const layer = chunk.layers[key];
+      if (layer.category === catKey) {
+        if (layer.solidMesh) layer.solidMesh.visible = isVis;
+        if (layer.impostorMesh) layer.impostorMesh.visible = isVis;
+      }
+    }
+  }
+  updateLODVisibility(true);
 }
 
 // 11. Layer & Opacity Control
@@ -2591,6 +2961,39 @@ function setupEventListeners() {
     });
   }
 
+  const checkRoads = document.getElementById('check-roads');
+  if (checkRoads) {
+    checkRoads.addEventListener('change', (e) => {
+      const enabled = e.target.checked;
+      if (!state.roads) state.roads = {};
+      state.roads.enabled = enabled;
+      if (roadsLineMesh) {
+        roadsLineMesh.visible = enabled;
+      }
+    });
+  }
+
+  const checkLandmarks = document.getElementById('check-landmarks');
+  if (checkLandmarks) {
+    checkLandmarks.addEventListener('change', (e) => {
+      const enabled = e.target.checked;
+      if (!state.landmarks) state.landmarks = {};
+      state.landmarks.enabled = enabled;
+      if (osmLandmarksGroup) osmLandmarksGroup.visible = enabled;
+      const badgeLandmarks = document.getElementById('badge-landmarks-count');
+      if (badgeLandmarks) badgeLandmarks.textContent = enabled ? 'Ativo' : 'Desativado';
+    });
+  }
+
+  const chkPESDBoundary = document.getElementById('check-pesd-boundary');
+  if (chkPESDBoundary) {
+    chkPESDBoundary.addEventListener('change', (e) => {
+      if (pesdBoundaryGroup) {
+        pesdBoundaryGroup.visible = e.target.checked;
+      }
+    });
+  }
+
   if (checkPropsShadows) {
     checkPropsShadows.addEventListener('change', (e) => {
       state.props.castShadows = e.target.checked;
@@ -2650,28 +3053,74 @@ function setupEventListeners() {
 
   window.setPropsDensity = setPropsDensity;
 
-  if (btnIncreaseDensity) {
-    btnIncreaseDensity.addEventListener('click', () => {
-      const tiers = [1.0, 1.5, 2.0, 2.5];
-      let cur = state.props.density || 1.0;
-      let idx = tiers.findIndex(t => Math.abs(t - cur) < 0.05);
-      if (idx === -1) idx = 0;
-      let nextIdx = (idx + 1) % tiers.length;
-      setPropsDensity(tiers[nextIdx]);
+  // 🌿 Slider Contínuo de Densidade de Props (0.5x a 5.0x) com Debounce
+  let densityDebounceTimer = null;
 
-      btnIncreaseDensity.classList.add('pulse');
-      setTimeout(() => btnIncreaseDensity.classList.remove('pulse'), 300);
-    });
+  function formatDensityLabel(val) {
+    if (val < 0.9) return `${val.toFixed(1)}x (Econômico)`;
+    if (val <= 1.2) return `${val.toFixed(1)}x (Padrão 1:1)`;
+    if (val <= 2.2) return `${val.toFixed(1)}x (Alta Densidade)`;
+    if (val <= 3.8) return `${val.toFixed(1)}x (Ultra Densa)`;
+    return `${val.toFixed(1)}x (Hiper-Densidade 🔥)`;
   }
 
-  document.querySelectorAll('.btn-density').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const d = parseFloat(btn.dataset.density);
-      if (!isNaN(d)) {
-        setPropsDensity(d);
+  function updateDensityUI(val) {
+    const txt = formatDensityLabel(val);
+    if (valPropDensity) valPropDensity.textContent = txt;
+    if (valPropDensitySettings) valPropDensitySettings.textContent = txt;
+    if (badgeDensityMultiplier) badgeDensityMultiplier.textContent = `${val.toFixed(1)}x`;
+    if (densityHelperText) {
+      if (val > 3.8) {
+        densityHelperText.textContent = 'Mais de 1,5M de instâncias ativas!';
+        densityHelperText.style.color = '#c084fc';
+      } else if (val > 2.0) {
+        densityHelperText.textContent = 'Dossel denso e fechado';
+        densityHelperText.style.color = 'var(--accent-green)';
+      } else {
+        densityHelperText.textContent = 'Equilibrada para qualquer GPU';
+        densityHelperText.style.color = 'var(--text-muted)';
       }
-    });
-  });
+    }
+  }
+
+  function onDensityInput(e) {
+    const val = parseFloat(e.target.value);
+    if (sliderPropDensity && sliderPropDensity !== e.target) sliderPropDensity.value = val;
+    if (sliderPropDensitySettings && sliderPropDensitySettings !== e.target) sliderPropDensitySettings.value = val;
+    updateDensityUI(val);
+
+    clearTimeout(densityDebounceTimer);
+    densityDebounceTimer = setTimeout(() => {
+      state.props.density = val;
+      if (state.props.enabled) {
+        buildPropsMeshes();
+      }
+    }, 220);
+  }
+
+  if (sliderPropDensity) {
+    sliderPropDensity.addEventListener('input', onDensityInput);
+  }
+  if (sliderPropDensitySettings) {
+    sliderPropDensitySettings.addEventListener('input', onDensityInput);
+  }
+
+  // ⚙️ Gerenciador do Menu Flutuante de Ajustes & Otimizações
+  function toggleSettingsPanel() {
+    if (!settingsPanel) return;
+    const isAct = settingsPanel.classList.toggle('active');
+    if (btnOpenSettings) btnOpenSettings.classList.toggle('active', isAct);
+  }
+
+  function closeSettingsPanel() {
+    if (!settingsPanel) return;
+    settingsPanel.classList.remove('active');
+    if (btnOpenSettings) btnOpenSettings.classList.remove('active');
+  }
+
+  if (btnOpenSettings) btnOpenSettings.addEventListener('click', toggleSettingsPanel);
+  if (btnOpenSettingsSide) btnOpenSettingsSide.addEventListener('click', toggleSettingsPanel);
+  if (btnCloseSettings) btnCloseSettings.addEventListener('click', closeSettingsPanel);
 
   // Botão "🎯 Resetar para Escala 1:1 Real"
   const btnScale1to1 = document.getElementById('btn-scale-1to1');
@@ -2707,11 +3156,65 @@ function setupEventListeners() {
         chip.classList.remove('disabled');
         state.props.categories[propKey] = true;
       }
-      for (const [key, layer] of Object.entries(propLayers)) {
-        if (layer.category === propKey || key === propKey) {
-          layer.mesh.visible = state.props.categories[propKey] && state.props.enabled;
+      updateCategoryVisibility(propKey);
+    });
+  });
+
+  // ⚡ Controles de Otimização LOD Inteligente
+  if (checkLodEnabled) {
+    checkLodEnabled.addEventListener('change', (e) => {
+      state.lod.enabled = e.target.checked;
+      if (badgeLodMode) {
+        if (state.lod.enabled) {
+          badgeLodMode.textContent = `Ativo (${state.lodChunks ? state.lodChunks.length : 32} Chunks)`;
+          badgeLodMode.style.color = 'var(--accent-green)';
+          badgeLodMode.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+        } else {
+          badgeLodMode.textContent = 'Desativado (Modo Bruto)';
+          badgeLodMode.style.color = 'var(--accent-orange)';
+          badgeLodMode.style.borderColor = 'rgba(245, 158, 11, 0.4)';
         }
       }
+      updateLODVisibility(true);
+    });
+  }
+
+  if (checkLodFrustum) {
+    checkLodFrustum.addEventListener('change', (e) => {
+      state.lod.frustumCulling = e.target.checked;
+      updateLODVisibility(true);
+    });
+  }
+
+  // Resolução da Malha do Terreno (LOD Terreno)
+  document.querySelectorAll('#btn-group-terrain-lod .seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#btn-group-terrain-lod .seg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const tlod = btn.dataset.tlod;
+      state.terrainLod = tlod;
+      const badge = document.getElementById('badge-terrain-lod');
+      const labels = {
+        ultra: 'Ultra (350k v)',
+        balanced: 'Equilibrado (87k v)',
+        fast: 'Leve (21k v)'
+      };
+      if (badge) badge.textContent = labels[tlod] || tlod;
+      buildTerrainMesh();
+      updatePropsTransforms();
+    });
+  });
+
+  // Pipeline de Dados (LOD de Processamento)
+  document.querySelectorAll('#btn-group-data-lod .seg-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const dlod = btn.dataset.dlod;
+      if (state.dataLod === dlod) return;
+      document.querySelectorAll('#btn-group-data-lod .seg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const badge = document.getElementById('badge-data-lod');
+      if (badge) badge.textContent = dlod === 'lod1' ? 'LOD 1 (Meia Res - 4x Mais Rápido)' : 'DEM 30m Completo';
+      await setDataPipelineLOD(dlod);
     });
   });
 
@@ -2908,6 +3411,60 @@ function copyStatisticsSummary(btn) {
   });
 }
 
+// 13. Pipeline de Dados Multi-Resolução (LOD de Processamento e Transmissão)
+async function setDataPipelineLOD(dlod) {
+  state.dataLod = dlod;
+  updateProgress(20, 'Carregando dados altimétricos LOD...');
+  if (loadingOverlay) {
+    loadingOverlay.style.display = 'flex';
+    loadingOverlay.classList.remove('fade-out');
+  }
+
+  try {
+    if (dlod === 'lod1') {
+      updateProgress(40, 'Carregando classes LOD 1 (340 KB - 4x mais leve)...');
+      const cResp = await fetch('public/classes_lod1.bin');
+      rawClasses = new Uint8Array(await cResp.arrayBuffer());
+
+      updateProgress(65, 'Carregando elevação LOD 1 (1.3 MB - 4x mais leve)...');
+      const eResp = await fetch('public/elevation_lod1.bin');
+      rawElevations = new Float32Array(await eResp.arrayBuffer());
+
+      state.demDimensions = { width: 825, height: 423 };
+    } else {
+      updateProgress(40, 'Carregando classes 30m (1.4 MB)...');
+      const cResp = await fetch('public/classes.bin');
+      rawClasses = new Uint8Array(await cResp.arrayBuffer());
+
+      updateProgress(65, 'Carregando elevação 30m (5.6 MB)...');
+      const eResp = await fetch('public/elevation.bin');
+      rawElevations = new Float32Array(await eResp.arrayBuffer());
+
+      state.demDimensions = { width: 1650, height: 847 };
+    }
+
+    updateProgress(80, 'Reconstruindo malha do relevo...');
+    buildTerrainMesh();
+
+    updateProgress(92, 'Reconstruindo chunks espaciais e instâncias 3D...');
+    buildPropsMeshes();
+
+    updateProgress(100, 'Pronto!');
+    setTimeout(() => {
+      if (loadingOverlay) {
+        loadingOverlay.classList.add('fade-out');
+        setTimeout(() => { loadingOverlay.style.display = 'none'; }, 600);
+      }
+    }, 300);
+  } catch (err) {
+    console.error('Erro ao alternar pipeline LOD:', err);
+    if (loadingStatus) {
+      loadingStatus.textContent = 'Erro ao carregar dados: ' + err.message;
+      loadingStatus.style.color = '#ef4444';
+    }
+  }
+}
+
 function onWindowResize() {
   const w = window.innerWidth;
   const h = window.innerHeight;
@@ -2917,9 +3474,14 @@ function onWindowResize() {
 }
 
 // 14. Render Animation Loop
-function animate() {
+function animate(now) {
   requestAnimationFrame(animate);
   controls.update();
+
+  // Execução do gerenciador de LOD com verificação de frustum e distâncias
+  if (state.lod && state.lod.enabled) {
+    updateLODVisibility();
+  }
 
   // Deslocamento suave das nuvens no céu
   if (cloudMesh && cloudMesh.material && cloudMesh.material.map) {
@@ -2934,4 +3496,637 @@ function animate() {
   }
 
   renderer.render(scene, camera);
+}
+
+// ============================================================================
+// --- GERENCIADOR DE PEDESTAL / SAIA 3D DA MAQUETE ARQUITETÔNICA ---
+// ============================================================================
+let skirtMesh = null;
+let skirtGeometry = null;
+let rawSkirtEdgeMap = [];
+
+function buildTerrainSkirt() {
+  if (skirtMesh) {
+    scene.remove(skirtMesh);
+    if (skirtGeometry) skirtGeometry.dispose();
+  }
+
+  const segW = terrainGeometry && terrainGeometry.parameters ? terrainGeometry.parameters.widthSegments : 825;
+  const segH = terrainGeometry && terrainGeometry.parameters ? terrainGeometry.parameters.heightSegments : 423;
+  const geoW = state.terrainSpan.width;
+  const geoH = state.terrainSpan.height;
+  const demW = state.demDimensions.width;
+  const demH = state.demDimensions.height;
+  const yBase = -1.5; // Base sólida do pedestal da maquete física
+
+  const positions = [];
+  rawSkirtEdgeMap = [];
+
+  function addSkirtQuad(x1, z1, u1, v1, x2, z2, u2, v2) {
+    const e1 = getBilinearElevation(u1, v1, demW, demH) * state.baseHeight * state.exaggeration;
+    const e2 = getBilinearElevation(u2, v2, demW, demH) * state.baseHeight * state.exaggeration;
+    const startIdx = positions.length / 3;
+
+    // Triângulo 1: topo 1 -> topo 2 -> base 1
+    positions.push(x1, e1, z1);
+    rawSkirtEdgeMap.push({ idx: startIdx + 0, u: u1, v: v1 });
+    positions.push(x2, e2, z2);
+    rawSkirtEdgeMap.push({ idx: startIdx + 1, u: u2, v: v2 });
+    positions.push(x1, yBase, z1);
+
+    // Triângulo 2: base 1 -> topo 2 -> base 2
+    positions.push(x1, yBase, z1);
+    positions.push(x2, e2, z2);
+    rawSkirtEdgeMap.push({ idx: startIdx + 4, u: u2, v: v2 });
+    positions.push(x2, yBase, z2);
+  }
+
+  // 1. Borda Norte: z = -geoH / 2
+  const zN = -geoH / 2;
+  for (let c = 0; c < segW; c++) {
+    const u1 = c / segW;
+    const u2 = (c + 1) / segW;
+    const x1 = (u1 - 0.5) * geoW;
+    const x2 = (u2 - 0.5) * geoW;
+    addSkirtQuad(x2, zN, u2, 0, x1, zN, u1, 0);
+  }
+
+  // 2. Borda Leste: x = geoW / 2
+  const xE = geoW / 2;
+  for (let r = 0; r < segH; r++) {
+    const v1 = r / segH;
+    const v2 = (r + 1) / segH;
+    const z1 = (v1 - 0.5) * geoH;
+    const z2 = (v2 - 0.5) * geoH;
+    addSkirtQuad(xE, z2, 1, v2, xE, z1, 1, v1);
+  }
+
+  // 3. Borda Sul: z = geoH / 2
+  const zS = geoH / 2;
+  for (let c = segW; c > 0; c--) {
+    const u1 = c / segW;
+    const u2 = (c - 1) / segW;
+    const x1 = (u1 - 0.5) * geoW;
+    const x2 = (u2 - 0.5) * geoW;
+    addSkirtQuad(x2, zS, u2, 1, x1, zS, u1, 1);
+  }
+
+  // 4. Borda Oeste: x = -geoW / 2
+  const xW = -geoW / 2;
+  for (let r = segH; r > 0; r--) {
+    const v1 = r / segH;
+    const v2 = (r - 1) / segH;
+    const z1 = (v1 - 0.5) * geoH;
+    const z2 = (v2 - 0.5) * geoH;
+    addSkirtQuad(xW, z2, 0, v2, xW, z1, 0, v1);
+  }
+
+  skirtGeometry = new THREE.BufferGeometry();
+  skirtGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  skirtGeometry.computeVertexNormals();
+
+  const skirtMat = new THREE.MeshStandardMaterial({
+    color: 0x141820, // Cinza ardósia escuro arquitetônico premium
+    roughness: 0.92,
+    metalness: 0.08,
+    side: THREE.DoubleSide
+  });
+
+  skirtMesh = new THREE.Mesh(skirtGeometry, skirtMat);
+  skirtMesh.receiveShadow = true;
+  scene.add(skirtMesh);
+
+  // Placa de fundo inferior da maquete
+  const basePlateGeo = new THREE.PlaneGeometry(geoW, geoH);
+  basePlateGeo.rotateX(Math.PI / 2);
+  const basePlateMesh = new THREE.Mesh(basePlateGeo, skirtMat);
+  basePlateMesh.position.y = yBase;
+  basePlateMesh.receiveShadow = true;
+  scene.add(basePlateMesh);
+}
+
+function updateSkirtElevation() {
+  if (!skirtMesh || !skirtGeometry || !rawSkirtEdgeMap.length) return;
+  const demW = state.demDimensions.width;
+  const demH = state.demDimensions.height;
+  const posAttr = skirtGeometry.attributes.position;
+
+  for (let i = 0; i < rawSkirtEdgeMap.length; i++) {
+    const item = rawSkirtEdgeMap[i];
+    const elev = getBilinearElevation(item.u, item.v, demW, demH) * state.baseHeight * state.exaggeration;
+    posAttr.setY(item.idx, elev);
+  }
+  posAttr.needsUpdate = true;
+  skirtGeometry.computeVertexNormals();
+}
+
+// ============================================================================
+// --- GERENCIADOR DE REDE VIÁRIA E TRILHAS 3D (OSM) ---
+// ============================================================================
+let roadsGroup = null;
+let roadsLineMesh = null;
+let rawRoadsVertices = [];
+let roadsLoaded = false;
+
+async function loadRoadsNetwork() {
+  try {
+    const resp = await fetch('public/roads.json');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    buildRoadsMesh(data);
+    roadsLoaded = true;
+    console.log('🛣️ Rede viária e trilhas OSM carregadas com sucesso.');
+  } catch (err) {
+    console.warn('Erro ao carregar rede viária OSM:', err);
+  }
+}
+
+function buildRoadsMesh(data) {
+  if (roadsGroup) {
+    scene.remove(roadsGroup);
+    roadsGroup.clear();
+  }
+  roadsGroup = new THREE.Group();
+  window.roadsGroup = roadsGroup;
+  scene.add(roadsGroup);
+
+  const demW = state.demDimensions.width;
+  const demH = state.demDimensions.height;
+
+  const positions = [];
+  const colors = [];
+  rawRoadsVertices = [];
+
+  const tierColors = {
+    tier1: new THREE.Color(0x0a0a0a), // Preto Ônix / Rodovias Principais (GO-070, GO-164)
+    tier2: new THREE.Color(0x27272a), // Grafite Escuro / Estradas de Acesso ao PESD
+    tier3: new THREE.Color(0x475569)  // Cinza Ardósia / Trilhas Ecológicas da Crista e Areião
+  };
+
+  const tiers = ['tier1', 'tier2', 'tier3'];
+  let totalWays = 0;
+
+  for (const t of tiers) {
+    const list = data[t] || [];
+    const col = tierColors[t];
+    totalWays += list.length;
+
+    for (let i = 0; i < list.length; i++) {
+      const road = list[i];
+      const pts = road.pts;
+      if (!pts || pts.length < 2) continue;
+
+      for (let j = 0; j < pts.length - 1; j++) {
+        const p1 = pts[j];
+        const p2 = pts[j + 1];
+
+        const elev1 = getBilinearElevation(p1[2], p1[3], demW, demH) * state.baseHeight * state.exaggeration + 0.048;
+        const elev2 = getBilinearElevation(p2[2], p2[3], demW, demH) * state.baseHeight * state.exaggeration + 0.048;
+
+        positions.push(p1[0], elev1, p1[1]);
+        colors.push(col.r, col.g, col.b);
+        rawRoadsVertices.push({ u: p1[2], v: p1[3] });
+
+        positions.push(p2[0], elev2, p2[1]);
+        colors.push(col.r, col.g, col.b);
+        rawRoadsVertices.push({ u: p2[2], v: p2[3] });
+      }
+    }
+  }
+
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geom.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+  const mat = new THREE.LineBasicMaterial({
+    vertexColors: true,
+    transparent: true,
+    opacity: 1.0,
+    depthWrite: false
+  });
+
+  roadsLineMesh = new THREE.LineSegments(geom, mat);
+  roadsLineMesh.visible = (state.roads && state.roads.enabled !== undefined) ? state.roads.enabled : true;
+  roadsGroup.add(roadsLineMesh);
+
+  const badge = document.getElementById('badge-roads-count');
+  if (badge) badge.textContent = `${totalWays.toLocaleString('pt-BR')} vias e trilhas`;
+}
+
+function updateRoadsElevation() {
+  if (!roadsLineMesh || !rawRoadsVertices.length) return;
+  const posAttr = roadsLineMesh.geometry.attributes.position;
+  const demW = state.demDimensions.width;
+  const demH = state.demDimensions.height;
+
+  for (let i = 0; i < rawRoadsVertices.length; i++) {
+    const v = rawRoadsVertices[i];
+    const elev = getBilinearElevation(v.u, v.v, demW, demH) * state.baseHeight * state.exaggeration + 0.048;
+    posAttr.setY(i, elev);
+  }
+  posAttr.needsUpdate = true;
+}
+
+// ============================================================================
+// --- GERENCIADOR DE LIMITES OFICIAIS DO PARQUE ESTADUAL DA SERRA DOURADA ---
+// ============================================================================
+let pesdBoundaryGroup = null;
+let rawBoundaryVertices = [];
+
+async function loadParqueBoundary() {
+  try {
+    const resp = await fetch('public/serra_dourada_boundary.json');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    buildParqueBoundaryMesh(data);
+    console.log('🗺️ Limites oficiais do PESD carregados com sucesso.');
+  } catch (err) {
+    console.warn('Erro ao carregar limites do PESD:', err);
+  }
+}
+
+function buildParqueBoundaryMesh(data) {
+  if (pesdBoundaryGroup) {
+    scene.remove(pesdBoundaryGroup);
+    pesdBoundaryGroup.clear();
+  }
+  pesdBoundaryGroup = new THREE.Group();
+  window.pesdBoundaryGroup = pesdBoundaryGroup;
+  scene.add(pesdBoundaryGroup);
+  rawBoundaryVertices = [];
+
+  const demW = state.demDimensions.width;
+  const demH = state.demDimensions.height;
+  const ribbonH = 0.55; // Altura da fita luminosa arquitetônica
+
+  // Fita vertical em Vermelho Carmesim clássico
+  const ribbonMat = new THREE.MeshBasicMaterial({
+    color: 0xdc143c,
+    transparent: true,
+    opacity: 0.88,
+    side: THREE.DoubleSide,
+    depthWrite: false
+  });
+
+  // Linha superior iluminada
+  const lineMat = new THREE.LineBasicMaterial({
+    color: 0xff2a55,
+    linewidth: 2,
+    transparent: true,
+    opacity: 0.98
+  });
+
+  const rings = data.rings || [];
+  for (const ring of rings) {
+    if (!ring || ring.length < 2) continue;
+
+    const quadPositions = [];
+    const linePositions = [];
+    const ringVerts = [];
+
+    const N = ring.length;
+    for (let i = 0; i < N; i++) {
+      const p1 = ring[i];
+      const p2 = ring[(i + 1) % N];
+
+      const e1 = getBilinearElevation(p1[2], p1[3], demW, demH) * state.baseHeight * state.exaggeration;
+      const e2 = getBilinearElevation(p2[2], p2[3], demW, demH) * state.baseHeight * state.exaggeration;
+
+      const yBot1 = e1 + 0.04;
+      const yTop1 = e1 + ribbonH;
+      const yBot2 = e2 + 0.04;
+      const yTop2 = e2 + ribbonH;
+
+      // Triângulo 1: bot1 -> bot2 -> top2
+      quadPositions.push(p1[0], yBot1, p1[1]);
+      quadPositions.push(p2[0], yBot2, p2[1]);
+      quadPositions.push(p2[0], yTop2, p2[1]);
+
+      // Triângulo 2: bot1 -> top2 -> top1
+      quadPositions.push(p1[0], yBot1, p1[1]);
+      quadPositions.push(p2[0], yTop2, p2[1]);
+      quadPositions.push(p1[0], yTop1, p1[1]);
+
+      linePositions.push(p1[0], yTop1, p1[1]);
+
+      ringVerts.push({
+        u1: p1[2], v1: p1[3],
+        u2: p2[2], v2: p2[3],
+        quadStart: i * 18,
+        lineIdx: i
+      });
+    }
+
+    const ribbonGeo = new THREE.BufferGeometry();
+    ribbonGeo.setAttribute('position', new THREE.Float32BufferAttribute(quadPositions, 3));
+    const ribbonMesh = new THREE.Mesh(ribbonGeo, ribbonMat);
+    pesdBoundaryGroup.add(ribbonMesh);
+
+    const lineGeo = new THREE.BufferGeometry();
+    lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
+    const lineMesh = new THREE.LineLoop(lineGeo, lineMat);
+    pesdBoundaryGroup.add(lineMesh);
+
+    rawBoundaryVertices.push({ ribbonMesh, lineMesh, ringVerts, ribbonH });
+  }
+
+  const chk = document.getElementById('check-pesd-boundary');
+  pesdBoundaryGroup.visible = !chk || chk.checked;
+}
+
+function updateParqueBoundaryElevation() {
+  if (!rawBoundaryVertices.length) return;
+  const demW = state.demDimensions.width;
+  const demH = state.demDimensions.height;
+
+  for (const item of rawBoundaryVertices) {
+    const qPos = item.ribbonMesh.geometry.attributes.position;
+    const lPos = item.lineMesh.geometry.attributes.position;
+    const h = item.ribbonH;
+
+    for (const v of item.ringVerts) {
+      const e1 = getBilinearElevation(v.u1, v.v1, demW, demH) * state.baseHeight * state.exaggeration;
+      const e2 = getBilinearElevation(v.u2, v.v2, demW, demH) * state.baseHeight * state.exaggeration;
+
+      const yBot1 = e1 + 0.04;
+      const yTop1 = e1 + h;
+      const yBot2 = e2 + 0.04;
+      const yTop2 = e2 + h;
+
+      const q = v.quadStart;
+      qPos.setY(q / 3 + 0, yBot1);
+      qPos.setY(q / 3 + 1, yBot2);
+      qPos.setY(q / 3 + 2, yTop2);
+
+      qPos.setY(q / 3 + 3, yBot1);
+      qPos.setY(q / 3 + 4, yTop2);
+      qPos.setY(q / 3 + 5, yTop1);
+
+      lPos.setY(v.lineIdx, yTop1);
+    }
+
+    qPos.needsUpdate = true;
+    lPos.needsUpdate = true;
+  }
+}
+
+// ============================================================================
+// --- MODELOS 3D E GERENCIADOR DE MARCOS & PATRIMÔNIO HISTÓRICO ---
+// ============================================================================
+let osmLandmarksGroup = null;
+
+// 1. Monólito da Pedra Goiana (Quartzito esculpido pelo intemperismo em equilíbrio precário)
+function createPedraGoianaGeo() {
+  // Base quartzítica robusta
+  const base = new THREE.BoxGeometry(0.18, 0.09, 0.16);
+  base.translate(0, 0.045, 0);
+  applyVertexColors(base, [190, 165, 130]);
+
+  // Rocha superior em equilíbrio oblíquo característico
+  const topRock = new THREE.DodecahedronGeometry(0.14, 1);
+  topRock.scale(1.4, 0.9, 1.1);
+  topRock.rotateZ(0.25);
+  topRock.rotateY(0.4);
+  topRock.translate(0.04, 0.16, 0.02);
+  applyVertexColors(topRock, [215, 185, 145]);
+
+  return createColoredGeometry([base, topRock]);
+}
+
+// 2. Mirante Panorâmico da Serra Dourada (Deck de observação + mastro)
+function createMirantePESDGeo() {
+  // Deck de madeira
+  const deck = new THREE.BoxGeometry(0.22, 0.02, 0.22);
+  deck.translate(0, 0.08, 0);
+  applyVertexColors(deck, [140, 100, 60]);
+
+  // Pilares de sustentação
+  const p1 = new THREE.CylinderGeometry(0.008, 0.008, 0.08, 4);
+  p1.translate(-0.09, 0.04, -0.09);
+  const p2 = p1.clone(); p2.translate(0.18, 0, 0);
+  const p3 = p1.clone(); p3.translate(0, 0, 0.18);
+  const p4 = p1.clone(); p4.translate(0.18, 0, 0.18);
+  applyVertexColors(p1, [90, 65, 40]);
+  applyVertexColors(p2, [90, 65, 40]);
+  applyVertexColors(p3, [90, 65, 40]);
+  applyVertexColors(p4, [90, 65, 40]);
+
+  // Mastro central com sinalizador
+  const pole = new THREE.CylinderGeometry(0.004, 0.005, 0.18, 6);
+  pole.translate(0, 0.17, 0);
+  applyVertexColors(pole, [220, 220, 230]);
+
+  const flag = new THREE.BoxGeometry(0.05, 0.03, 0.003);
+  flag.translate(0.028, 0.23, 0);
+  applyVertexColors(flag, [34, 197, 94]); // Verde bandeira
+
+  return createColoredGeometry([deck, p1, p2, p3, p4, pole, flag]);
+}
+
+// 3. Igreja Matriz de Sant'Ana (Catedral Colonial - Fachada monumental com torres gêmeas)
+function createMatrizSantanaGeo() {
+  // Corpo central da nave
+  const nave = new THREE.BoxGeometry(0.24, 0.15, 0.32);
+  nave.translate(0, 0.075, 0);
+  applyVertexColors(nave, [245, 240, 230]);
+
+  // Telhado cerâmico colonial
+  const roof = new THREE.ConeGeometry(0.22, 0.07, 4);
+  roof.rotateY(Math.PI / 4);
+  roof.scale(1.2, 1.0, 1.6);
+  roof.translate(0, 0.185, 0);
+  applyVertexColors(roof, [180, 85, 45]);
+
+  // Torre sineira esquerda
+  const towerL = new THREE.BoxGeometry(0.065, 0.24, 0.065);
+  towerL.translate(-0.13, 0.12, 0.13);
+  applyVertexColors(towerL, [245, 240, 230]);
+  const capL = new THREE.ConeGeometry(0.05, 0.06, 4);
+  capL.rotateY(Math.PI / 4);
+  capL.translate(-0.13, 0.27, 0.13);
+  applyVertexColors(capL, [180, 85, 45]);
+
+  // Torre sineira direita
+  const towerR = new THREE.BoxGeometry(0.065, 0.24, 0.065);
+  towerR.translate(0.13, 0.12, 0.13);
+  applyVertexColors(towerR, [245, 240, 230]);
+  const capR = capL.clone();
+  capR.position.x = 0.13;
+
+  // Frontispício / Portal barroco
+  const portal = new THREE.BoxGeometry(0.05, 0.07, 0.015);
+  portal.translate(0, 0.035, 0.165);
+  applyVertexColors(portal, [100, 70, 45]);
+
+  return createColoredGeometry([nave, roof, towerL, towerR, capL, capR, portal]);
+}
+
+// 4. Igreja de Santa Bárbara (Mirante no morro - torre central simplificada)
+function createIgrejaSantaBarbaraGeo() {
+  const base = new THREE.BoxGeometry(0.20, 0.12, 0.26);
+  base.translate(0, 0.06, 0);
+  applyVertexColors(base, [250, 250, 245]);
+
+  const roof = new THREE.ConeGeometry(0.18, 0.06, 4);
+  roof.rotateY(Math.PI / 4);
+  roof.scale(1.2, 1.0, 1.4);
+  roof.translate(0, 0.15, 0);
+  applyVertexColors(roof, [190, 90, 50]);
+
+  // Torre frontal única com campanário
+  const tower = new THREE.BoxGeometry(0.06, 0.18, 0.06);
+  tower.translate(0, 0.09, 0.11);
+  applyVertexColors(tower, [245, 240, 235]);
+
+  const cross = new THREE.BoxGeometry(0.01, 0.04, 0.01);
+  cross.translate(0, 0.19, 0.11);
+  applyVertexColors(cross, [210, 180, 60]);
+
+  return createColoredGeometry([base, roof, tower, cross]);
+}
+
+// 5. Museu Casa de Cora Coralina (Casarão secular à beira do Rio Vermelho)
+function createCasaCoraCoralinaGeo() {
+  // Casarão térreo alongado com beiral colonial
+  const house = new THREE.BoxGeometry(0.34, 0.09, 0.18);
+  house.translate(0, 0.045, 0);
+  applyVertexColors(house, [252, 250, 242]); // Caiado branco colonial
+
+  // Telhado amplo de telha colonial
+  const roof = new THREE.ConeGeometry(0.24, 0.06, 4);
+  roof.rotateY(Math.PI / 4);
+  roof.scale(1.6, 1.0, 1.2);
+  roof.translate(0, 0.11, 0);
+  applyVertexColors(roof, [185, 88, 48]);
+
+  // Portais e janelas azuis tradicionais de Cora
+  const door = new THREE.BoxGeometry(0.025, 0.05, 0.01);
+  door.translate(-0.06, 0.025, 0.092);
+  applyVertexColors(door, [40, 120, 200]); // Azul colonial
+
+  const win1 = new THREE.BoxGeometry(0.025, 0.035, 0.01);
+  win1.translate(0.04, 0.045, 0.092);
+  applyVertexColors(win1, [40, 120, 200]);
+
+  const win2 = win1.clone();
+  win2.translate(0.06, 0, 0);
+
+  // Mureta de pedra do Rio Vermelho
+  const riverWall = new THREE.BoxGeometry(0.40, 0.04, 0.03);
+  riverWall.translate(0, 0.02, 0.12);
+  applyVertexColors(riverWall, [130, 125, 120]);
+
+  return createColoredGeometry([house, roof, door, win1, win2, riverWall]);
+}
+
+// 6. Palácio Conde dos Arcos (Sede do Governo colonial de Goiás)
+function createPalacioCondeArcosGeo() {
+  const main = new THREE.BoxGeometry(0.36, 0.14, 0.22);
+  main.translate(0, 0.07, 0);
+  applyVertexColors(main, [248, 245, 238]);
+
+  const roof = new THREE.ConeGeometry(0.26, 0.07, 4);
+  roof.rotateY(Math.PI / 4);
+  roof.scale(1.5, 1.0, 1.2);
+  roof.translate(0, 0.175, 0);
+  applyVertexColors(roof, [180, 85, 45]);
+
+  // Frontão central clássico
+  const pediment = new THREE.ConeGeometry(0.08, 0.04, 4);
+  pediment.rotateY(Math.PI / 4);
+  pediment.scale(1.2, 1.0, 0.5);
+  pediment.translate(0, 0.16, 0.11);
+  applyVertexColors(pediment, [240, 235, 220]);
+
+  // Portal monumental
+  const portal = new THREE.BoxGeometry(0.05, 0.07, 0.012);
+  portal.translate(0, 0.035, 0.112);
+  applyVertexColors(portal, [95, 65, 40]);
+
+  return createColoredGeometry([main, roof, pediment, portal]);
+}
+
+async function loadOSMLandmarks() {
+  try {
+    const resp = await fetch('public/osm_landmarks_3d.json');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    buildOSMLandmarks(data);
+    console.log('🏛️ Marcos históricos e geográficos 3D carregados com sucesso.');
+  } catch (err) {
+    console.warn('Erro ao carregar marcos 3D:', err);
+  }
+}
+
+function buildOSMLandmarks(data) {
+  if (osmLandmarksGroup) {
+    scene.remove(osmLandmarksGroup);
+    osmLandmarksGroup.clear();
+  }
+  osmLandmarksGroup = new THREE.Group();
+  window.osmLandmarksGroup = osmLandmarksGroup;
+  scene.add(osmLandmarksGroup);
+
+  const demW = state.demDimensions.width;
+  const demH = state.demDimensions.height;
+
+  const landmarkGeos = {
+    pedra_goiana: createPedraGoianaGeo(),
+    mirante_pesd: createMirantePESDGeo(),
+    catedral_santana: createMatrizSantanaGeo(),
+    igreja_santa_barbara: createIgrejaSantaBarbaraGeo(),
+    casa_cora_coralina: createCasaCoraCoralinaGeo(),
+    palacio_conde_arcos: createPalacioCondeArcosGeo()
+  };
+
+  const pbrMat = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    roughness: 0.65,
+    metalness: 0.12,
+    flatShading: true
+  });
+
+  const list = data.landmarks || [];
+  const s = state.landmarks ? (state.landmarks.scale || 1.0) : 1.0;
+
+  for (const lm of list) {
+    const geo = landmarkGeos[lm.id];
+    if (!geo) continue;
+
+    const mesh = new THREE.Mesh(geo, pbrMat);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.scale.set(s, s, s);
+
+    const elev = getBilinearElevation(lm.u, lm.v, demW, demH) * state.baseHeight * state.exaggeration;
+    mesh.position.set(lm.scene_x, elev, lm.scene_z);
+    mesh.userData = lm;
+    osmLandmarksGroup.add(mesh);
+  }
+
+  osmLandmarksGroup.visible = state.landmarks ? (state.landmarks.enabled !== false) : true;
+}
+
+function updateLandmarksScale(scaleVal) {
+  if (!state.landmarks) state.landmarks = {};
+  state.landmarks.scale = scaleVal;
+  if (!osmLandmarksGroup) return;
+  osmLandmarksGroup.traverse(child => {
+    if (child.isMesh && child.userData && child.userData.id) {
+      child.scale.set(scaleVal, scaleVal, scaleVal);
+    }
+  });
+}
+
+function updateOSMLandmarksElevation() {
+  if (!osmLandmarksGroup) return;
+  const demW = state.demDimensions.width;
+  const demH = state.demDimensions.height;
+
+  osmLandmarksGroup.traverse(child => {
+    if (child.isMesh && child.userData && child.userData.u !== undefined) {
+      const elev = getBilinearElevation(child.userData.u, child.userData.v, demW, demH) * state.baseHeight * state.exaggeration;
+      child.position.y = elev;
+    }
+  });
 }

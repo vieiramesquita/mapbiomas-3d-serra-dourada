@@ -52,6 +52,13 @@
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/><path d="M4 20h16"/></svg>
         <span>Estatísticas da Área</span>
       </button>
+      <button id="btn-open-settings" class="btn-header-settings" title="Abrir Ajustes Avançados, LOD e Camadas Vetoriais">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span>⚙️ Ajustes & LOD</span>
+      </button>
       <button id="btn-toggle-all-menus" class="btn-top-action" title="Ocultar ou exibir todos os menus para visualização panorâmica">
         <svg id="icon-toggle-all" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
         <span id="label-toggle-all">Ocultar Menus</span>
@@ -168,28 +175,24 @@
         <span>4.0x</span>
       </div>
 
-      <!-- Densidade da Vegetação (+ props por pixel) -->
+      <!-- Densidade da Vegetação & Objetos 3D (Slider Contínuo 0.5x a 5.0x) -->
       <div class="density-control-container">
-        <div class="slider-header" style="margin-bottom: 6px;">
-          <label for="btn-increase-density" style="font-weight: 600; color: var(--text-main); font-size: 0.8rem; display: flex; align-items: center; gap: 5px;">
-            <span>🌿 Densidade da Vegetação</span>
+        <div class="slider-header" style="margin-bottom: 4px;">
+          <label for="slider-prop-density" style="font-weight: 600; color: var(--text-main); font-size: 0.8rem; display: flex; align-items: center; gap: 6px;">
+            <span>🌿 Densidade de Objetos 3D</span>
           </label>
-          <span class="slider-val" id="val-prop-density" style="color: var(--accent-green); font-weight: 600;">1.0x Padrão</span>
+          <span class="slider-val" id="val-prop-density" style="color: var(--accent-green); font-weight: 700;">1.0x (Padrão 1:1)</span>
         </div>
-
-        <button class="btn-increase-density" id="btn-increase-density" title="Clique para aumentar a densidade de objetos e árvores por pixel">
-          <span style="display: flex; align-items: center; gap: 6px;">
-            <span style="font-size: 1.05rem;">➕</span>
-            <span>Aumentar Densidade (+ props/px)</span>
-          </span>
-          <span class="badge" id="badge-density-next" style="background: rgba(16, 185, 129, 0.45); font-size: 0.7rem; padding: 2px 7px; border-radius: 6px; font-weight: 700;">+50% (1.5x)</span>
-        </button>
-
-        <div class="btn-density-grid">
-          <button class="btn-density active" data-density="1.0" id="btn-density-1x">1.0x Padrão</button>
-          <button class="btn-density" data-density="1.5" id="btn-density-15x">1.5x Alta</button>
-          <button class="btn-density" data-density="2.0" id="btn-density-2x">2.0x Densa</button>
-          <button class="btn-density" data-density="2.5" id="btn-density-25x">2.5x Ultra</button>
+        <input type="range" id="slider-prop-density" min="0.5" max="5.0" step="0.1" value="1.0">
+        <div class="slider-ticks" style="font-size: 0.68rem; margin-top: 2px;">
+          <span>0.5x (Leve)</span>
+          <span style="color: var(--accent-green);">1.0x</span>
+          <span>2.5x</span>
+          <span style="color: #c084fc; font-weight: 700;">5.0x (Hiper)</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+          <span style="font-size: 0.68rem; color: var(--text-muted);" id="density-helper-text">Equilibrada para 60 FPS</span>
+          <span class="badge-tag" id="badge-density-multiplier" style="font-size: 0.68rem;">1.0x</span>
         </div>
       </div>
 
@@ -253,7 +256,22 @@
       </div>
     </div>
 
-    <div class="control-group">
+        <!-- Atalho para o Menu Separado de Ajustes & Otimizações -->
+    <div class="control-group" style="padding: 12px 14px; background: rgba(168, 85, 247, 0.08); border-radius: 12px; border: 1px solid rgba(168, 85, 247, 0.28);">
+      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-weight: 600; color: #fff;">⚙️ Configurações & LOD</span>
+        <span class="badge-tag" style="background: rgba(168, 85, 247, 0.2); color: #c084fc; font-size: 9.5px;">Menu Dedicado</span>
+      </div>
+      <button id="btn-open-settings-side" class="btn-action btn-settings-shortcut" style="margin: 0; background: linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(147, 51, 234, 0.35)); border-color: rgba(168, 85, 247, 0.5); color: #fff; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(168, 85, 247, 0.2);">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Abrir Ajustes & Otimizações LOD</span>
+      </button>
+      <div style="font-size: 10px; color: var(--text-muted); margin-top: 6px; text-align: center;">
+        LOD 32 Chunks • Vias & Trilhas • Limites • Monumentos
+      </div>
+    </div>
+
+<div class="control-group">
       <label class="group-label">Ângulos de Câmera & Escala</label>
       <div class="camera-presets">
         <button class="btn-preset" id="btn-scale-1to1" style="grid-column: span 2; margin-bottom: 4px; border-color: rgba(16, 185, 129, 0.5); background: rgba(16, 185, 129, 0.15); color: #fff; font-weight: 600;">🎯 Resetar para Escala 1:1 Real</button>
@@ -289,6 +307,160 @@
       Redefinir Câmera
     </button>
     </div> <!-- end .panel-body -->
+  </aside>
+
+  <!-- Auxiliary Settings & LOD Floating Panel -->
+  <aside class="settings-panel glass-card" id="settings-panel">
+    <div class="panel-header" style="border-bottom: 1px solid rgba(168, 85, 247, 0.25);">
+      <div class="panel-title" style="color: #fff;">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#c084fc" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span>Ajustes & Otimizações</span>
+      </div>
+      <div class="panel-header-actions">
+        <span class="badge-tag" style="background: rgba(168, 85, 247, 0.2); color: #c084fc; font-size: 10px; font-weight: 700;">Avançado</span>
+        <button id="btn-close-settings" class="btn-panel-minimize" title="Fechar menu de ajustes" style="font-size: 14px; padding: 2px 8px;">✕</button>
+      </div>
+    </div>
+
+    <div class="panel-body">
+      <!-- ⚡ SEÇÃO 1: Otimização LOD Inteligente -->
+      <div class="control-group" id="group-lod-optimization">
+        <div class="slider-header" style="margin-bottom: 6px;">
+          <label class="group-label" style="display: flex; align-items: center; gap: 6px; color: #fff;">
+            <span>⚡ Otimização & Desempenho LOD</span>
+          </label>
+          <span class="badge-tag" id="badge-lod-mode">Ativo (32 Chunks)</span>
+        </div>
+
+        <div class="lod-switches-row">
+          <label class="switch-container">
+            <input type="checkbox" id="check-lod-enabled" checked>
+            <span class="switch-slider"></span>
+            <span class="switch-label">LOD Dinâmico</span>
+          </label>
+
+          <label class="switch-container">
+            <input type="checkbox" id="check-lod-frustum" checked>
+            <span class="switch-slider"></span>
+            <span class="switch-label">Frustum Culling</span>
+          </label>
+        </div>
+
+        <!-- Métricas em Tempo Real do LOD -->
+        <div class="lod-metrics-card">
+          <div class="lod-metric-item">
+            <span class="lod-metric-label">Chunks no Frustum</span>
+            <span class="lod-metric-value" id="stat-lod-chunks">-- / 32</span>
+          </div>
+          <div class="lod-metric-item">
+            <span class="lod-metric-label">Props Ativos</span>
+            <span class="lod-metric-value" id="stat-lod-props">--</span>
+          </div>
+          <div class="lod-metric-item">
+            <span class="lod-metric-label">Economia GPU</span>
+            <span class="lod-metric-value highlight" id="stat-lod-savings">--%</span>
+          </div>
+        </div>
+
+        <!-- Resolução da Malha Altimétrica (LOD Terreno) -->
+        <div class="slider-header" style="margin-top: 10px; margin-bottom: 4px;">
+          <label class="group-label" style="font-size: 0.78rem;">Malha do Terreno (LOD)</label>
+          <span class="badge-tag" id="badge-terrain-lod" style="font-size: 0.7rem;">Ultra (350k v)</span>
+        </div>
+        <div class="btn-segmented" id="btn-group-terrain-lod">
+          <button class="seg-btn active" data-tlod="ultra" id="btn-tlod-ultra">Ultra</button>
+          <button class="seg-btn" data-tlod="balanced" id="btn-tlod-balanced">Equilibrado (-75%)</button>
+          <button class="seg-btn" data-tlod="fast" id="btn-tlod-fast">Leve (-94%)</button>
+        </div>
+
+        <!-- Modo de Dados de Entrada (LOD de Processamento) -->
+        <div class="slider-header" style="margin-top: 10px; margin-bottom: 4px;">
+          <label class="group-label" style="font-size: 0.78rem;">Pipeline de Dados</label>
+          <span class="badge-tag" id="badge-data-lod" style="font-size: 0.7rem;">DEM 30m Completo</span>
+        </div>
+        <div class="btn-segmented" id="btn-group-data-lod">
+          <button class="seg-btn active" data-dlod="full" id="btn-dlod-full">Completo (30m)</button>
+          <button class="seg-btn" data-dlod="lod1" id="btn-dlod-lod1">LOD 1 (Meia Res - 4x Mais Rápido)</button>
+        </div>
+      </div>
+
+      <!-- 🌿 SEÇÃO 2: Densidade de Objetos (0.5x a 5.0x) -->
+      <div class="control-group" style="background: rgba(16, 185, 129, 0.08); border-radius: 10px; padding: 10px; border: 1px solid rgba(16, 185, 129, 0.3);">
+        <div class="slider-header" style="margin-bottom: 4px;">
+          <label style="font-weight: 600; color: #fff; font-size: 0.8rem; display: flex; align-items: center; gap: 6px;">
+            <span>🌿 Densidade de Props & Vegetação</span>
+          </label>
+          <span class="slider-val" id="val-prop-density-settings" style="color: var(--accent-green); font-weight: 700;">1.0x (Padrão 1:1)</span>
+        </div>
+        <input type="range" id="slider-prop-density-settings" min="0.5" max="5.0" step="0.1" value="1.0">
+        <div class="slider-ticks" style="font-size: 0.68rem; margin-top: 2px;">
+          <span>0.5x</span>
+          <span style="color: var(--accent-green);">1.0x</span>
+          <span>2.0x</span>
+          <span>3.5x</span>
+          <span style="color: #c084fc; font-weight: 700;">5.0x (Hiper)</span>
+        </div>
+        <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 6px; line-height: 1.35;">
+          <span>🚀 Com LOD e 32 chunks ativos, densidades até <strong>5.0x</strong> processam mais de 1,5 milhão de árvores e objetos mantendo 60 FPS estáveis.</span>
+        </div>
+      </div>
+
+      <!-- 🗺️ SEÇÃO 3: Marcos e Patrimônio 3D -->
+      <div class="control-group" id="group-landmarks" style="background: rgba(0,0,0,0.22); border-radius: 10px; padding: 10px; border: 1px solid rgba(168, 85, 247, 0.35);">
+        <div class="slider-header" style="margin-bottom: 4px;">
+          <label class="switch-container">
+            <input type="checkbox" id="check-landmarks" checked>
+            <span class="switch-slider" style="background: #a855f7;"></span>
+            <span class="switch-label" style="font-weight: 600; color: #fff;">🏛️ Marcos & Monumentos 3D</span>
+          </label>
+          <span class="badge-tag" id="badge-landmarks-count" style="background: rgba(168, 85, 247, 0.2); color: #c084fc; font-size: 10px; font-weight: 700;">Ativo</span>
+        </div>
+        <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 8px;">
+          <span>Pedra Goiana, Mirante do PESD, Catedral de Sant'Ana, Santa Bárbara e Casa de Cora Coralina</span>
+        </div>
+
+        <div class="slider-header" style="margin-top: 6px;">
+          <label for="slider-landmarks-scale" style="font-size: 11px;">Escala dos Monumentos</label>
+          <span class="slider-val" id="val-landmarks-scale" style="font-size: 11px;">1.0x</span>
+        </div>
+        <input type="range" id="slider-landmarks-scale" min="0.5" max="3.0" step="0.1" value="1.0">
+      </div>
+
+      <!-- 🛣️ SEÇÃO 4: Infraestrutura e Rodovias OSM -->
+      <div class="control-group" id="group-roads" style="background: rgba(0,0,0,0.22); border-radius: 10px; padding: 10px; border: 1px solid rgba(56, 189, 248, 0.25);">
+        <div class="slider-header" style="margin-bottom: 4px;">
+          <label class="switch-container">
+            <input type="checkbox" id="check-roads" checked>
+            <span class="switch-slider" style="background: #0284c7;"></span>
+            <span class="switch-label" style="font-weight: 600; color: #fff;">🛣️ Rede Viária & Trilhas</span>
+          </label>
+          <span class="badge-tag" id="badge-roads-count" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; font-size: 10px;">Ativo</span>
+        </div>
+        <div style="font-size: 10px; color: var(--text-muted); display: flex; justify-content: space-between; margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.06);">
+          <span><span style="display: inline-block; width: 8px; height: 8px; background: #0a0a0a; border: 1px solid #cbd5e1; border-radius: 50%; vertical-align: middle;"></span> <strong style="color: #fff;">Preto</strong> (GO-070/164)</span>
+          <span><span style="display: inline-block; width: 8px; height: 8px; background: #27272a; border: 1px solid #94a3b8; border-radius: 50%; vertical-align: middle;"></span> <strong style="color: #cbd5e1;">Grafite</strong> (Estradas PESD)</span>
+          <span><span style="display: inline-block; width: 8px; height: 8px; background: #475569; border-radius: 50%; vertical-align: middle;"></span> <strong style="color: #94a3b8;">Ardósia</strong> (Trilhas)</span>
+        </div>
+      </div>
+
+      <!-- 🗺️ SEÇÃO 5: Limites Oficiais do PESD - Vermelho Carmesim -->
+      <div class="control-group" id="group-pesd-boundary" style="background: rgba(0,0,0,0.22); border-radius: 10px; padding: 10px; border: 1px solid rgba(220, 20, 60, 0.4);">
+        <div class="slider-header" style="margin-bottom: 4px;">
+          <label class="switch-container">
+            <input type="checkbox" id="check-pesd-boundary" checked>
+            <span class="switch-slider" style="background: #dc143c;"></span>
+            <span class="switch-label" style="font-weight: 600; color: #fff;">🗺️ Limites Oficiais do PESD</span>
+          </label>
+          <span class="badge-tag" id="badge-boundary" style="background: rgba(220, 20, 60, 0.2); color: #dc143c; font-size: 10px; font-weight: 700; border: 1px solid rgba(220, 20, 60, 0.3);">Carmesim</span>
+        </div>
+        <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.06);">
+          <span>Perímetro do Parque Estadual em Vermelho Carmesim 3D</span>
+        </div>
+      </div>
+    </div>
   </aside>
 
   <!-- Botão Flutuante para reabrir Controles 3D quando minimizado -->

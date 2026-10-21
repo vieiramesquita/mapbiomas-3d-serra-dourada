@@ -1,0 +1,76 @@
+{
+  "landmarks": [
+    {
+      "id": "pedra_goiana",
+      "name": "Pedra Goiana (Monólito Natural de Quartzito)",
+      "type": "natural",
+      "desc": "Monólito esculpido de quartzito em equilíbrio precário na crista da serra",
+      "lon": -50.1802,
+      "lat": -16.0355,
+      "u": 0.6966,
+      "v": 0.44557,
+      "scene_x": 39.32,
+      "scene_z": -5.5879
+    },
+    {
+      "id": "mirante_pesd",
+      "name": "Mirante da Serra Dourada",
+      "type": "viewpoint",
+      "desc": "Ponto culminante da crista com visada panorâmica do vale e bioma Cerrado",
+      "lon": -50.1745,
+      "lat": -16.0428,
+      "u": 0.70885,
+      "v": 0.47745,
+      "scene_x": 41.7709,
+      "scene_z": -2.3153
+    },
+    {
+      "id": "catedral_santana",
+      "name": "Igreja Matriz de Sant'Ana (Catedral de Goiás)",
+      "type": "historical",
+      "desc": "Sé episcopal e marco colonial histórico da Cidade de Goiás (séc. XVIII)",
+      "lon": -50.1411,
+      "lat": -15.9344,
+      "u": 0.78204,
+      "v": 0.00609,
+      "scene_x": 56.4077,
+      "scene_z": -50.7081
+    },
+    {
+      "id": "igreja_santa_barbara",
+      "name": "Igreja de Santa Bárbara",
+      "type": "historical",
+      "desc": "Igreja erguida no alto da colina com vista monumental da cidade histórica",
+      "lon": -50.1432,
+      "lat": -15.9389,
+      "u": 0.77746,
+      "v": 0.02564,
+      "scene_x": 55.4912,
+      "scene_z": -48.7005
+    },
+    {
+      "id": "casa_cora_coralina",
+      "name": "Museu Casa de Cora Coralina",
+      "type": "museum",
+      "desc": "Secular casarão às margens do Rio Vermelho, residência da poetisa",
+      "lon": -50.1418,
+      "lat": -15.9329,
+      "u": 0.78054,
+      "v": -0.00045,
+      "scene_x": 56.1077,
+      "scene_z": -51.3798
+    },
+    {
+      "id": "palacio_conde_arcos",
+      "name": "Palácio Conde dos Arcos",
+      "type": "historical",
+      "desc": "Antiga sede dos Governadores da Capitania e Província de Goiás (1755)",
+      "lon": -50.1402,
+      "lat": -15.9351,
+      "u": 0.78398,
+      "v": 0.00915,
+      "scene_x": 56.7956,
+      "scene_z": -50.3936
+    }
+  ]
+}
