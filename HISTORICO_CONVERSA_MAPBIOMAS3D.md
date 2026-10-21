@@ -371,7 +371,47 @@ Foram agregadas quatro estratégias complementares de LOD que aliviam o processa
 - **Validação:**
   - Capturadas telas do navegador em ambas as aplicações (`localhost:8080` e `localhost:8081`), confirmando contraste perfeito, legibilidade imediata e acabamento visual premium.
 
+### 19. 📐 Calibração da Escala dos Sliders, Ativação de LODs e Sistema de Popups Explicativos
+- **Demandas do Usuário:**
+  - *"A escala aqui está errada. Os botões de Malha do Terreno e Pipeline de Dados não estão funcionando. Os botões de LOD Dinâmico e Frustum Culling funcionam (coloque um pop up explicando o que é isso e para algumas outras coisas)?"*
+- **Diagnóstico das Causas Raízes:**
+  1. **Desalinhamento do Slider de Densidade (Escala Incorreta):**
+     - O controle deslizante `<input type="range">` opera no intervalo contínuo de $0.5$ a $5.0$ (amplitude total de $4.5$).
+     - No valor padrão $1.0x$, a posição física real do botão deslizante (*thumb*) no trilho fica a exatamente $\frac{1.0 - 0.5}{4.5} = 11,11\%$ da borda esquerda.
+     - Contudo, a barra de marcas anterior (`.slider-ticks`) utilizava `display: flex; justify-content: space-between` com 5 rótulos (`0.5x`, `1.0x`, `2.0x`, `3.5x`, `5.0x`), posicionando o texto `1.0x` a $25\%$ da largura! O botão verde ficava totalmente deslocado em relação ao número $1.0x$.
+  2. **Botões de "Malha do Terreno" e "Pipeline de Dados" Inoperantes no DF:**
+     - Na aplicação do Distrito Federal (`MapBiomas3D_DF/web/app.js`), os event listeners para os botões segmentados `#btn-group-terrain-lod` e `#btn-group-data-lod`, bem como os toggles `#check-lod-enabled` e `#check-lod-frustum`, foram omitidos da função `setupEventListeners()`.
+     - Na Serra Dourada, embora as geometrias fossem reconstruídas, a textura de satélite drapeada disfarçava a decimação poligonal e não havia feedback visual (toast notification) ou atualização da elevação dos vetores (vias, marcos e limites).
+- **Soluções & Implementações Técnicas:**
+  1. **Posicionamento Matemático Absoluto das Marcas de Escala (`.slider-ticks-density`):**
+     - Substituição do flexbox genérico por um sistema de posicionamento absoluto calculado com a fórmula:
+       $$\text{offset} = \text{calc}\left(8\text{px} + (100\% - 16\text{px}) \times \frac{V - 0.5}{4.5}\right)$$
+     - **0.5x:** $0\%$ (início do trilho)
+     - **1.0x:** $11,11\%$ (alinhamento exato sob o thumb padrão 1:1)
+     - **2.0x:** $33,33\%$
+     - **3.5x:** $66,67\%$
+     - **5.0x (Hiper):** $100\%$ (final do trilho)
+     - Adicionado pequeno traço indicador (*tick notch*) acima de cada rótulo e realce dinâmico em verde (`.active`) quando o slider atinge a marca.
+     - **Interatividade em 1 Clique:** Clicar diretamente sobre qualquer número ajusta o slider para o valor correspondente instantaneamente.
+  2. **Ativação e Reatividade Completa dos Botões de Malha e Pipeline:**
+     - No DF e na Serra Dourada, os botões `Ultra`, `Equilibrado` e `Leve` agora regeneram a malha com a contagem poligonal exata, atualizam o pedestal (*skirt*), redistribuem os props e repassam as elevações para rodovias, marcos e perímetros territoriais.
+     - O alternador de Pipeline de Dados (`Completo 30m` vs `LOD 1 Meia Resolução`) transmite os binários otimizados de $1.3\text{ MB}$ / $8.5\text{ MB}$ e reconstrói os setores em tempo real.
+  3. **Sistema de Popups / Modais Explicativos Interativos (`ℹ️`):**
+     - Integrados botões redondos de ajuda `ℹ️` com microanimação de pulso ao lado de:
+       - **LOD Dinâmico:** Explicação detalhada de LOD 0 (<35m 3D sólido), LOD 1 (35-70m impostores 2.5D cross-quads) e LOD 2 (>70m culling).
+       - **Frustum Culling:** Explicação do particionamento em 32 chunks e descarte de chamadas de desenho fora do campo visual, economizando até 75% da GPU.
+       - **Malha do Terreno:** Explicação da resolução de vértices (Ultra vs Equilibrado -75% vs Leve -94%).
+       - **Pipeline de Dados:** Explicação da compactação multi-resolução e economia de tráfego de rede.
+       - **Densidade de Props & Vegetação:** Explicação dos multiplicadores de 0.5x até 5.0x (mais de 1,5M a 2M de árvores).
+       - **Modo Nadir:** Explicação da projeção ortogonal aérea e uso cartográfico.
+       - **Exagero Vertical:** Explicação da escala altimétrica topográfica.
+     - Criado modal com glassmorphism, destaque de métricas de economia e botão "Entendi, continuar navegando".
+  4. **Toasts Flutuantes de Ação (`.app-toast`):**
+     - Notificações discretas com pílula escura e brilho ciano surgem no centro inferior da tela a cada mudança de malha, pipeline, LOD ou densidade, garantindo confirmação inequívoca de funcionamento.
+- **Validação:**
+  - Ambas as aplicações foram testadas via subagente de navegador com captura de telas confirmando alinhamento milimétrico do slider, funcionamento de todos os botões de malha/pipeline e abertura fluida dos modais explicativos.
+
 ---
-*Documento atualizado automaticamente em 21/10/2026 com o redesign de alto contraste dos botões do HUD.*
+*Documento atualizado automaticamente em 21/10/2026 com a calibração de escala dos sliders, ativação de botões de LOD e sistema de popups informativos.*
 
 

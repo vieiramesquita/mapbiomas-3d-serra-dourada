@@ -100,7 +100,10 @@
 
     <div class="control-group">
       <div class="slider-header">
-        <label for="slider-exaggeration">Exagero Vertical</label>
+        <label for="slider-exaggeration" style="display: flex; align-items: center; gap: 4px;">
+          <span>Exagero Vertical</span>
+          <button class="info-help-btn" data-info="exaggeration" title="Clique para entender o Exagero Vertical" aria-label="Ajuda Exagero Vertical">ℹ️</button>
+        </label>
         <span class="slider-val" id="val-exaggeration">1.0x (1:1 Real)</span>
       </div>
       <input type="range" id="slider-exaggeration" min="0.2" max="4.0" step="0.1" value="1.0">
@@ -198,17 +201,19 @@
       <!-- Densidade da Vegetação & Objetos 3D (Slider Contínuo 0.5x a 5.0x) -->
       <div class="density-control-container">
         <div class="slider-header" style="margin-bottom: 4px;">
-          <label for="slider-prop-density" style="font-weight: 600; color: var(--text-main); font-size: 0.8rem; display: flex; align-items: center; gap: 6px;">
+          <label for="slider-prop-density" style="font-weight: 600; color: var(--text-main); font-size: 0.8rem; display: flex; align-items: center; gap: 4px;">
             <span>🌿 Densidade de Objetos 3D</span>
+            <button class="info-help-btn" data-info="prop-density" title="Clique para entender a Densidade de Objetos" aria-label="Ajuda Densidade">ℹ️</button>
           </label>
           <span class="slider-val" id="val-prop-density" style="color: var(--accent-green); font-weight: 700;">1.0x (Padrão 1:1)</span>
         </div>
         <input type="range" id="slider-prop-density" min="0.5" max="5.0" step="0.1" value="1.0">
-        <div class="slider-ticks" style="font-size: 0.68rem; margin-top: 2px;">
-          <span>0.5x (Leve)</span>
-          <span style="color: var(--accent-green);">1.0x</span>
-          <span>2.5x</span>
-          <span style="color: #c084fc; font-weight: 700;">5.0x (Hiper)</span>
+        <div class="slider-ticks-density" id="ticks-prop-density">
+          <div class="tick-item tick-05" data-val="0.5"><span>0.5x</span></div>
+          <div class="tick-item tick-10 active" data-val="1.0"><span>1.0x</span></div>
+          <div class="tick-item tick-20" data-val="2.0"><span>2.0x</span></div>
+          <div class="tick-item tick-35" data-val="3.5"><span>3.5x</span></div>
+          <div class="tick-item tick-50 tick-hiper" data-val="5.0"><span>5.0x (Hiper)</span></div>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
           <span style="font-size: 0.68rem; color: var(--text-muted);" id="density-helper-text">Equilibrada para 60 FPS</span>
@@ -361,12 +366,14 @@
             <input type="checkbox" id="check-lod-enabled" checked>
             <span class="switch-slider"></span>
             <span class="switch-label">LOD Dinâmico</span>
+            <button class="info-help-btn" data-info="lod" title="Clique para entender o LOD Dinâmico" aria-label="Ajuda LOD Dinâmico">ℹ️</button>
           </label>
 
           <label class="switch-container">
             <input type="checkbox" id="check-lod-frustum" checked>
             <span class="switch-slider"></span>
             <span class="switch-label">Frustum Culling</span>
+            <button class="info-help-btn" data-info="frustum" title="Clique para entender o Frustum Culling" aria-label="Ajuda Frustum Culling">ℹ️</button>
           </label>
         </div>
 
@@ -388,7 +395,10 @@
 
         <!-- Resolução da Malha Altimétrica (LOD Terreno) -->
         <div class="slider-header" style="margin-top: 10px; margin-bottom: 4px;">
-          <label class="group-label" style="font-size: 0.78rem;">Malha do Terreno (LOD)</label>
+          <label class="group-label" style="font-size: 0.78rem; display: flex; align-items: center; gap: 4px;">
+            <span>Malha do Terreno (LOD)</span>
+            <button class="info-help-btn" data-info="terrain-lod" title="Clique para entender a Malha do Terreno" aria-label="Ajuda Malha Terreno">ℹ️</button>
+          </label>
           <span class="badge-tag" id="badge-terrain-lod" style="font-size: 0.7rem;">Ultra (350k v)</span>
         </div>
         <div class="btn-segmented" id="btn-group-terrain-lod">
@@ -399,7 +409,10 @@
 
         <!-- Modo de Dados de Entrada (LOD de Processamento) -->
         <div class="slider-header" style="margin-top: 10px; margin-bottom: 4px;">
-          <label class="group-label" style="font-size: 0.78rem;">Pipeline de Dados</label>
+          <label class="group-label" style="font-size: 0.78rem; display: flex; align-items: center; gap: 4px;">
+            <span>Pipeline de Dados</span>
+            <button class="info-help-btn" data-info="data-lod" title="Clique para entender o Pipeline de Dados" aria-label="Ajuda Pipeline Dados">ℹ️</button>
+          </label>
           <span class="badge-tag" id="badge-data-lod" style="font-size: 0.7rem;">DEM 30m Completo</span>
         </div>
         <div class="btn-segmented" id="btn-group-data-lod">
@@ -413,16 +426,17 @@
         <div class="slider-header" style="margin-bottom: 4px;">
           <label style="font-weight: 600; color: #fff; font-size: 0.8rem; display: flex; align-items: center; gap: 6px;">
             <span>🌿 Densidade de Props & Vegetação</span>
+            <button class="info-help-btn" data-info="prop-density" title="Clique para entender a Densidade de Vegetação" aria-label="Ajuda Densidade">ℹ️</button>
           </label>
           <span class="slider-val" id="val-prop-density-settings" style="color: var(--accent-green); font-weight: 700;">1.0x (Padrão 1:1)</span>
         </div>
         <input type="range" id="slider-prop-density-settings" min="0.5" max="5.0" step="0.1" value="1.0">
-        <div class="slider-ticks" style="font-size: 0.68rem; margin-top: 2px;">
-          <span>0.5x</span>
-          <span style="color: var(--accent-green);">1.0x</span>
-          <span>2.0x</span>
-          <span>3.5x</span>
-          <span style="color: #c084fc; font-weight: 700;">5.0x (Hiper)</span>
+        <div class="slider-ticks-density" id="ticks-prop-density-settings">
+          <div class="tick-item tick-05" data-val="0.5"><span>0.5x</span></div>
+          <div class="tick-item tick-10 active" data-val="1.0"><span>1.0x</span></div>
+          <div class="tick-item tick-20" data-val="2.0"><span>2.0x</span></div>
+          <div class="tick-item tick-35" data-val="3.5"><span>3.5x</span></div>
+          <div class="tick-item tick-50 tick-hiper" data-val="5.0"><span>5.0x (Hiper)</span></div>
         </div>
         <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 6px; line-height: 1.35;">
           <span>🚀 Com LOD e 32 chunks ativos, densidades até <strong>5.0x</strong> processam mais de 1,5 milhão de árvores e objetos mantendo 60 FPS estáveis.</span>
@@ -640,6 +654,40 @@
         <button id="btn-close-stats-footer" class="btn-action" style="max-width: 140px;">Fechar</button>
       </div>
     </div>
+  </div>
+
+  <!-- Modal Informativo e Explicativo de Otimizações & Tecnologias -->
+  <div class="info-modal-backdrop" id="info-modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="info-modal-card">
+      <div class="info-modal-header">
+        <div class="info-modal-title-box">
+          <span class="info-modal-icon" id="info-modal-icon">⚡</span>
+          <div>
+            <h3 class="info-modal-title" id="info-modal-title">LOD Dinâmico</h3>
+            <div class="info-modal-subtitle" id="info-modal-subtitle">Otimização Hierárquica em Tempo Real</div>
+          </div>
+        </div>
+        <button class="info-modal-close" id="btn-close-info-modal" title="Fechar (Esc)">✕</button>
+      </div>
+      <div class="info-modal-body">
+        <p class="info-modal-desc" id="info-modal-desc"></p>
+        <ul class="info-modal-details-list" id="info-modal-details"></ul>
+        <div class="info-modal-highlight-box" id="info-modal-highlight">
+          <span>🚀</span>
+          <span id="info-modal-impact"></span>
+        </div>
+        <div class="info-modal-rec-box" id="info-modal-rec"></div>
+      </div>
+      <div class="info-modal-footer">
+        <button class="btn-info-dismiss" id="btn-dismiss-info-modal">Entendi, continuar navegando</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Flutuante de Notificação de Ações -->
+  <div class="app-toast" id="app-toast">
+    <span id="toast-icon">⚡</span>
+    <span id="toast-message">Configuração atualizada</span>
   </div>
 
   <!-- Import Three.js, Controls and Utilities -->
