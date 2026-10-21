@@ -350,6 +350,28 @@ Foram agregadas quatro estratégias complementares de LOD que aliviam o processa
 - **Validação com Browser Subagents:**
   - Ambas as aplicações foram testadas via subagente de navegador (`localhost:8080` e `localhost:8081`): verificado carregamento inicial em perspectiva 3D, ativação do modo Nadir com enquadramento ortomosaico perfeito do relevo, aparição do card flutuante, e reversão para a vista 3D ao clicar no botão de restauração.
 
+### 18. 🎨 Correção de Contraste e Redesign dos Botões Superiores do HUD
+- **Demanda do Usuário:**
+  - *"Porque diabos esses botões são tão claros? Eu mal consigo velos"*
+- **Diagnóstico da Causa Raiz:**
+  - Os botões de ação do cabeçalho superior (`#btn-toggle-nadir`, `#btn-open-stats`, `#btn-open-settings` e `#btn-toggle-all-menus`) utilizavam fundos com transparência excessiva (`rgba(..., 0.15)` a `0.25`), fontes em tons pastéis claros (`#38bdf8`, `#c084fc`) e flutuavam diretamente sobre o céu atmosférico (`THREE.Sky` e neblina do horizonte a `0xb6d5ec`).
+  - Em telas de alta resolução e sob iluminação diurna do 3D, a sobreposição de cores claras transparentes sobre o fundo do céu provocava perda severa de contraste (taxa WCAG < 1.5:1), tornando o texto e os contornos quase invisíveis.
+  - Além disso, havia duplicidade de ícones (SVG + emoji) e alturas desiguais entre os botões.
+- **Soluções & Implementações de Design System:**
+  1. **Base Sólida de Alto Contraste (Dark Glassmorphism Profundo):**
+     - Redefinição do fundo dos botões para bases escuras e densas (`rgba(8, 20, 36, 0.94)` para Nadir, `rgba(6, 28, 18, 0.94)` para Estatísticas, `rgba(24, 12, 38, 0.94)` para Ajustes, e `rgba(15, 23, 42, 0.94)` para Ocultar Menus).
+     - Atualização das variáveis globais `:root` com `--panel-bg: rgba(10, 16, 28, 0.94)` e sombras profundas (`--panel-shadow: 0 18px 45px rgba(0, 0, 0, 0.7)`).
+  2. **Tipografia Branca Pura de Alta Legibilidade:**
+     - Todos os rótulos de texto foram fixados em branco puro `#ffffff` com `font-weight: 600`, garantindo índice de contraste superior a **14:1 (padrão AAA de acessibilidade)** contra qualquer posição do relevo ou céu.
+  3. **Identidade Visual por Acentos de Cor Vibrantes:**
+     - Cada botão agora possui borda destacada e ícone vetorial SVG monocromático brilhante com cores temáticas distintas (Ciano elétrico `#38bdf8` no Nadir, Verde esmeralda `#10b981` nas Estatísticas, Violeta `#c084fc` nos Ajustes e Cinza ardósia `#94a3b8` no Ocultar Menus).
+     - Remoção dos emojis redundantes dentro dos rótulos dos botões.
+  4. **Padronização Geométrica:**
+     - Altura fixa de **38px** para todos os botões, espaçamento interno padronizado (`padding: 0 15px`), alinhamento vertical centralizado (`align-items: center` em `.top-stats`) e microinterações de hover (`translateY(-2px)` com sombra projetada colorida).
+- **Validação:**
+  - Capturadas telas do navegador em ambas as aplicações (`localhost:8080` e `localhost:8081`), confirmando contraste perfeito, legibilidade imediata e acabamento visual premium.
+
 ---
-*Documento atualizado automaticamente em 21/10/2026 com a implementação do modo de visão Nadir em ambas as aplicações.*
+*Documento atualizado automaticamente em 21/10/2026 com o redesign de alto contraste dos botões do HUD.*
+
 

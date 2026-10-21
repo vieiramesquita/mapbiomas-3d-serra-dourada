@@ -1,13 +1,13 @@
 :root {
   --bg-dark: #0a0e17;
-  --panel-bg: rgba(14, 20, 32, 0.82);
-  --panel-border: rgba(255, 255, 255, 0.09);
-  --panel-shadow: 0 16px 40px rgba(0, 0, 0, 0.55), 0 0 1px rgba(255, 255, 255, 0.1);
+  --panel-bg: rgba(10, 16, 28, 0.94);
+  --panel-border: rgba(255, 255, 255, 0.14);
+  --panel-shadow: 0 18px 45px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255, 255, 255, 0.15);
   --accent-green: #10b981;
   --accent-gold: #f59e0b;
   --accent-cyan: #06b6d4;
-  --text-main: #f3f4f6;
-  --text-muted: #9ca3af;
+  --text-main: #ffffff;
+  --text-muted: #94a3b8;
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --title-family: 'Outfit', sans-serif;
 }
@@ -171,6 +171,7 @@ body, html {
 
 .top-stats {
   display: flex;
+  align-items: center;
   gap: 12px;
   pointer-events: auto;
 }
@@ -366,32 +367,7 @@ body, html {
   color: var(--accent-green);
 }
 
-/* Master Top Button (Ocultar/Exibir Todos os Menus) */
-.btn-top-action {
-  pointer-events: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--panel-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--panel-border);
-  color: #e2e8f0;
-  padding: 8px 14px;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: var(--panel-shadow);
-  font-family: var(--font-family);
-}
 
-.btn-top-action:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.25);
-  color: #fff;
-}
 
 /* Sliders */
 .control-group {
@@ -916,35 +892,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   color: #fff;
 }
 
-/* Button Open Statistics */
-.btn-stats-badge {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(6, 182, 212, 0.25));
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(16, 185, 129, 0.5);
-  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25), var(--panel-shadow);
-  padding: 8px 16px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  color: #fff;
-  font-family: var(--font-family);
-  font-size: 13px;
-  font-weight: 600;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
 
-.btn-stats-badge:hover {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.45), rgba(6, 182, 212, 0.45));
-  border-color: rgba(16, 185, 129, 0.85);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
-}
-
-.btn-stats-badge svg {
-  color: var(--accent-green);
-}
 
 /* Legend Item Enhanced Right Metadata */
 .legend-item-right {
@@ -1385,36 +1333,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   pointer-events: auto;
 }
 
-.btn-header-settings {
-  background: rgba(168, 85, 247, 0.16);
-  border: 1px solid rgba(168, 85, 247, 0.38);
-  color: #c084fc;
-  font-family: var(--font-family);
-  font-size: 12px;
-  font-weight: 600;
-  padding: 6px 13px;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
 
-.btn-header-settings:hover {
-  background: rgba(168, 85, 247, 0.3);
-  border-color: rgba(168, 85, 247, 0.65);
-  color: #fff;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(168, 85, 247, 0.35);
-}
-
-.btn-header-settings.active {
-  background: rgba(168, 85, 247, 0.38);
-  border-color: #a855f7;
-  color: #fff;
-  box-shadow: 0 0 18px rgba(168, 85, 247, 0.55);
-}
 
 .btn-settings-shortcut:hover {
   background: rgba(168, 85, 247, 0.26) !important;
@@ -1440,37 +1359,56 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 /* ==========================================================================
-   Nadir View Mode (Visão Aérea Zenital / Modo Mapa 2D/3D)
+   Top Header Action Buttons (High-Contrast Dark Glassmorphism)
    ========================================================================== */
-.btn-nadir-toggle {
-  background: rgba(14, 165, 233, 0.15);
-  border: 1px solid rgba(14, 165, 233, 0.38);
-  color: #38bdf8;
+.btn-nadir-toggle,
+.btn-stats-badge,
+.btn-header-settings,
+.btn-top-action {
+  height: 38px;
+  padding: 0 15px;
+  border-radius: 9px;
   font-family: var(--font-family);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
-  padding: 6px 13px;
-  border-radius: 8px;
+  color: #ffffff !important;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 7px;
-  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  gap: 8px;
+  white-space: nowrap;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55), 0 1px 3px rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
+  letter-spacing: 0.2px;
+}
+
+/* 1. Visão Nadir (Dark Navy Base with Vivid Sky-Blue / Cyan Accent) */
+.btn-nadir-toggle {
+  background: rgba(8, 20, 36, 0.94) !important;
+  border: 1px solid rgba(56, 189, 248, 0.6) !important;
+}
+
+.btn-nadir-toggle svg {
+  color: #38bdf8;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .btn-nadir-toggle:hover {
-  background: rgba(14, 165, 233, 0.28);
-  border-color: rgba(14, 165, 233, 0.7);
-  color: #fff;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(14, 165, 233, 0.35);
+  background: rgba(14, 45, 80, 0.96) !important;
+  border-color: #38bdf8 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(14, 165, 233, 0.35), 0 2px 6px rgba(0, 0, 0, 0.6);
 }
 
 .btn-nadir-toggle.active {
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.35), rgba(2, 132, 199, 0.5));
-  border-color: #38bdf8;
-  color: #fff;
-  box-shadow: 0 0 18px rgba(14, 165, 233, 0.6);
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.5), rgba(2, 132, 199, 0.75)) !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 22px rgba(14, 165, 233, 0.65);
   animation: pulse-nadir-border 2.5s infinite;
 }
 
@@ -1481,6 +1419,72 @@ input[type="range"]::-webkit-slider-thumb:hover {
   50% {
     box-shadow: 0 0 24px rgba(14, 165, 233, 0.85);
   }
+}
+
+/* 2. Estatísticas da Área (Dark Forest Base with Vivid Emerald Accent) */
+.btn-stats-badge {
+  background: rgba(6, 28, 18, 0.94) !important;
+  border: 1px solid rgba(16, 185, 129, 0.6) !important;
+}
+
+.btn-stats-badge svg {
+  color: #10b981;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.btn-stats-badge:hover {
+  background: rgba(12, 52, 34, 0.96) !important;
+  border-color: #34d399 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35), 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+/* 3. Ajustes & LOD (Dark Violet Base with Vivid Purple Accent) */
+.btn-header-settings {
+  background: rgba(24, 12, 38, 0.94) !important;
+  border: 1px solid rgba(168, 85, 247, 0.6) !important;
+}
+
+.btn-header-settings svg {
+  color: #c084fc;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.btn-header-settings:hover {
+  background: rgba(48, 22, 78, 0.96) !important;
+  border-color: #c084fc !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(168, 85, 247, 0.35), 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+.btn-header-settings.active {
+  background: rgba(168, 85, 247, 0.45) !important;
+  border-color: #c084fc !important;
+  box-shadow: 0 0 22px rgba(168, 85, 247, 0.65);
+}
+
+/* 4. Ocultar Menus (Dark Slate Base with Neutral Silver Accent) */
+.btn-top-action {
+  background: rgba(15, 23, 42, 0.94) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.btn-top-action svg {
+  color: #94a3b8;
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.btn-top-action:hover {
+  background: rgba(30, 41, 59, 0.98) !important;
+  border-color: rgba(255, 255, 255, 0.45) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65);
 }
 
 .btn-preset-nadir {
