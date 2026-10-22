@@ -3127,6 +3127,19 @@ const INFO_TOPICS = {
     ],
     impact: 'Ajusta dinamicamente a altura de rodovias, marcos 3D e vegetação para permanecerem perfeitamente drapeados ao relevo.',
     recommendation: 'Clique no botão <em>Resetar para Escala 1:1</em> a qualquer momento.'
+  },
+  'prop-scale': {
+    icon: '📏',
+    title: 'Escala dos Props (Tamanho Botânico e Arquitetônico)',
+    subtitle: 'Dimensão Métrica Relativa de Árvores e Objetos 3D',
+    description: 'Ajusta a altura e proporção métrica de todas as árvores, lavouras, edificações coloniais e animais em relação ao relevo topográfico.',
+    details: [
+      '<strong>1.0x (1:1 Real):</strong> Altura botânica estritamente calibrada com a realidade (ipês de 8m, cerrados de 4m, matas de 15m).',
+      '<strong>2.0x a 4.0x:</strong> Amplia a vegetação e monumentos para visualização clara em planos gerais ou telas menores.',
+      '<strong>0.5x:</strong> Reduz o porte da vegetação para dar foco total às cristas geológicas e desníveis do terreno.'
+    ],
+    impact: 'Atualiza instantaneamente as matrizes de transformação de todas as instâncias GPU sem recarregar dados.',
+    recommendation: 'Mantenha em <strong>1.0x</strong> para proporção botânica cientificamente realista.'
   }
 };
 
@@ -3254,14 +3267,31 @@ function setupEventListeners() {
     });
   }
 
+  const sliderPropScaleSettings = document.getElementById('slider-prop-scale-settings');
+  const valPropScaleSettings = document.getElementById('val-prop-scale-settings');
+
+  function updatePropScaleUI(val) {
+    const txt = val.toFixed(1) + (Math.abs(val - 1.0) < 0.05 ? 'x (1:1 Botânico)' : 'x');
+    if (valPropScale) valPropScale.textContent = txt;
+    if (valPropScaleSettings) valPropScaleSettings.textContent = txt;
+    if (sliderPropScale && parseFloat(sliderPropScale.value) !== val) sliderPropScale.value = val;
+    if (sliderPropScaleSettings && parseFloat(sliderPropScaleSettings.value) !== val) sliderPropScaleSettings.value = val;
+  }
+
+  function onPropScaleInput(e) {
+    const val = parseFloat(e.target.value);
+    state.props.scale = val;
+    updatePropScaleUI(val);
+    updatePropsTransforms();
+    if (typeof updateRoadsElevation === 'function') updateRoadsElevation();
+    if (typeof updateOSMLandmarksElevation === 'function') updateOSMLandmarksElevation();
+  }
+
   if (sliderPropScale) {
-    sliderPropScale.addEventListener('input', (e) => {
-      state.props.scale = parseFloat(e.target.value);
-      if (valPropScale) {
-        valPropScale.textContent = state.props.scale.toFixed(1) + (state.props.scale === 1.0 ? 'x (1:1 Botânico)' : 'x');
-      }
-      updatePropsTransforms();
-    });
+    sliderPropScale.addEventListener('input', onPropScaleInput);
+  }
+  if (sliderPropScaleSettings) {
+    sliderPropScaleSettings.addEventListener('input', onPropScaleInput);
   }
 
   // 8.2 Controle Dinâmico de Densidade de Vegetação e Props (+ props por pixel)
@@ -3392,14 +3422,17 @@ function setupEventListeners() {
   setupDensityTicks('ticks-prop-density', 'slider-prop-density');
   setupDensityTicks('ticks-prop-density-settings', 'slider-prop-density-settings');
 
-  // Conectar botões de ajuda / informação com popup explicativo
-  document.querySelectorAll('.info-help-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      openInfoModal(btn.dataset.info);
-    });
-  });
+  // Conectar botões de ajuda / informação com popup explicativo via delegação global em fase de captura
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.info-help-btn');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const topic = btn.dataset.info || btn.getAttribute('data-info');
+    if (topic) {
+      openInfoModal(topic);
+    }
+  }, true);
 
   const btnCloseInfoModal = document.getElementById('btn-close-info-modal');
   const btnDismissInfoModal = document.getElementById('btn-dismiss-info-modal');
@@ -3441,12 +3474,9 @@ function setupEventListeners() {
       valExaggeration.textContent = '1.0x (1:1 Real)';
       updateExaggeration(1.0);
 
-      if (sliderPropScale) {
-        sliderPropScale.value = '1.0';
-        if (valPropScale) valPropScale.textContent = '1.0x (1:1 Botânico)';
-        state.props.scale = 1.0;
-        updatePropsTransforms();
-      }
+      updatePropScaleUI(1.0);
+      state.props.scale = 1.0;
+      updatePropsTransforms();
 
       // Transição suave para enquadramento equilibrado em escala 1:1
       animateCamera(-30, 22, 60, 10, 1.6, 5);

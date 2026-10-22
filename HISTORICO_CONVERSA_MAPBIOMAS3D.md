@@ -411,7 +411,27 @@ Foram agregadas quatro estratégias complementares de LOD que aliviam o processa
 - **Validação:**
   - Ambas as aplicações foram testadas via subagente de navegador com captura de telas confirmando alinhamento milimétrico do slider, funcionamento de todos os botões de malha/pipeline e abertura fluida dos modais explicativos.
 
+
+### Iteração 27: Escala dos Props no Menu de Ajustes e Correção dos Pop-ups Explicativos (21/10/2026)
+- **Demandas do Usuário:**
+  1. *O slider de escala dos props pode estar também dentro do menu de ajustes;*
+  2. *Os pop-ups não estão funcionando;*
+- **Diagnóstico das Falhas dos Pop-ups:**
+  1. **Interceptação de Cliques por Tags `<label>`:** Os botões `ℹ️` estavam encapsulados internamente em tags `<label class="switch-container">` ou `<label class="group-label">`. No padrão HTML do navegador, o clique em qualquer elemento dentro de um `<label>` propaga e sintetiza um clique no `input` associado (desmarcando/marcando o switch ou transferindo o foco), cancelando ou suprimindo o evento do botão de ajuda.
+  2. **Estrutura DOM Ausente no Distrito Federal:** O arquivo `MapBiomas3D_DF/web/index.html` não havia recebido os nós `#info-modal-backdrop` e `#app-toast` devido a uma diferença no comentário de inserção (`Three.js (r128)` vs `Import Three.js`), resultando em erro silencioso (`null reference`) ao tentar invocar `classList.add('open')`.
+- **Implementações Técnicas Realizadas:**
+  1. **Desacoplamento Estrutural no DOM (`.slider-label-row` e `.lod-switch-item`):**
+     - Em ambos os projetos (`MapBiomas3D` e `MapBiomas3D_DF`), todos os botões `.info-help-btn` foram desacoplados das tags `<label>` e reposicionados em contêineres flex dedicados, com `type="button"`, `z-index: 5` e `pointer-events: auto`.
+  2. **Delegação de Eventos Global em Fase de Captura (`capture: true`):**
+     - No `app.js` de ambas as aplicações, os cliques são agora capturados no `document` com `addEventListener('click', handler, true)` e busca por `e.target.closest('.info-help-btn')`. Isso garante que nenhuma regra de propagação, stopPropagation de bibliotecas externas ou foco de labels interfira no acionamento do modal.
+  3. **Slider de Escala dos Props no Menu de Ajustes & LOD:**
+     - Adicionado `#slider-prop-scale-settings` na Seção 2 (*Vegetação & Objetos 3D*) do `#settings-panel`.
+     - Implementada sincronização bidirecional em tempo real entre o slider do menu principal (`#slider-prop-scale`) e o novo slider de ajustes (`#slider-prop-scale-settings`).
+     - Atualização automática dos rótulos de feedback (`1.0x (1:1 Botânico)`, etc.), das matrizes GPU de vegetação instanciada e da elevação dos marcos OSM.
+     - Botão *Resetar para Escala 1:1* agora reseta ambos os sliders simultaneamente.
+     - Criado tópico informativo dedicado no modal: `prop-scale` com ícone 📏 e explicações das proporções métricas botânicas e arquitetônicas.
+- **Validação:**
+  - Verificação automatizada via subagente de navegador com gravação em vídeo e capturas de tela em ambas as aplicações (`localhost:8081` Serra Dourada e `localhost:8082` Distrito Federal), confirmando abertura instantânea do modal, navegação por múltiplos tópicos, fechamento fluido e sincronia perfeita entre os sliders.
+
 ---
-*Documento atualizado automaticamente em 21/10/2026 com a calibração de escala dos sliders, ativação de botões de LOD e sistema de popups informativos.*
-
-
+*Documento atualizado automaticamente em 21/10/2026.*
