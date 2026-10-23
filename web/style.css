@@ -1350,11 +1350,251 @@ input[type="range"]::-webkit-slider-thumb:hover {
   }
 }
 
+/* Bottom Sheet Drag Indicator */
+.bottom-sheet-handle {
+  display: none;
+}
+
 @media (max-width: 768px) {
+  /* Prevent accidental page bounce and touch scrolling outside UI */
+  html, body {
+    touch-action: none;
+    -webkit-touch-callout: none;
+    overscroll-behavior: none;
+  }
+
+  #canvas-container {
+    touch-action: none;
+  }
+
+  /* Top Navigation Bar: Compact Mobile Toolbar */
+  .top-bar {
+    height: 52px;
+    padding: 0 10px;
+    gap: 8px;
+  }
+
+  .brand-badge {
+    display: none !important;
+  }
+
+  .tag-geo {
+    display: none !important;
+  }
+
+  .project-title {
+    font-size: 13px !important;
+    font-weight: 700;
+    max-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Hide raw stat items on mobile toolbar so action buttons have room */
+  .top-stats .stat-item {
+    display: none !important;
+  }
+
+  .top-stats {
+    gap: 6px;
+    align-items: center;
+  }
+
+  /* Action Buttons: Compact Touch Targets (36x36) */
+  .btn-nadir-toggle,
+  .btn-stats-badge,
+  .btn-header-settings,
+  .btn-top-action {
+    height: 36px !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    padding: 0 !important;
+    justify-content: center !important;
+    border-radius: 9px !important;
+  }
+
+  .btn-nadir-toggle span,
+  .btn-stats-badge span,
+  .btn-header-settings span,
+  .btn-top-action span {
+    display: none !important; /* show icon only on mobile */
+  }
+
+  .btn-nadir-toggle svg,
+  .btn-stats-badge svg,
+  .btn-header-settings svg,
+  .btn-top-action svg {
+    margin: 0 !important;
+  }
+
+  /* Bottom-Sheet Mode for Control & Settings Panels */
+  .control-panel,
   .settings-panel {
-    left: 10px;
-    right: 10px;
-    width: auto;
+    position: fixed !important;
+    top: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-height: 72vh !important;
+    border-radius: 20px 20px 0 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+    z-index: 50 !important;
+    transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease !important;
+  }
+
+  /* Slide Transitions */
+  .control-panel.minimized {
+    transform: translateY(105%) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  .control-panel:not(.minimized) {
+    transform: translateY(0) !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  .settings-panel {
+    transform: translateY(105%) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  .settings-panel.active {
+    transform: translateY(0) !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  .bottom-sheet-handle {
+    display: block;
+    width: 44px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.35);
+    margin: 8px auto 4px;
+    flex-shrink: 0;
+  }
+
+  .panel-header {
+    padding: 8px 16px 10px !important;
+  }
+
+  /* Floating Dock Button (Bottom-left pill when panel is closed) */
+  .floating-dock-btn.dock-left {
+    top: auto !important;
+    bottom: 20px !important;
+    left: 14px !important;
+    transform: none !important;
+    border-radius: 30px !important;
+    padding: 10px 16px !important;
+    background: rgba(11, 19, 32, 0.92) !important;
+    border: 1px solid rgba(16, 185, 129, 0.5) !important;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6), 0 0 15px rgba(16, 185, 129, 0.3) !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    z-index: 40 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+
+  .floating-dock-btn.dock-left .dock-text {
+    display: inline !important;
+  }
+
+  /* Compass widget: moved to top right below toolbar */
+  .compass-widget {
+    top: 60px !important;
+    right: 12px !important;
+    width: 38px !important;
+    height: 38px !important;
+    z-index: 30 !important;
+  }
+
+  /* Nadir Floating Badge */
+  .nadir-floating-badge {
+    top: 60px !important;
+    left: 10px !important;
+    right: 56px !important;
+    transform: none !important;
+    width: auto !important;
+    padding: 8px 12px !important;
+    border-radius: 12px !important;
+  }
+
+  .nadir-badge-title {
+    font-size: 11px !important;
+  }
+
+  .nadir-badge-desc {
+    display: none !important;
+  }
+
+  /* Modals: Mobile Fullscreen Cards */
+  .info-modal-card,
+  .modal-content {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    max-height: 88vh !important;
+    border-radius: 16px !important;
+    padding: 16px !important;
+    margin: auto !important;
+  }
+
+  .stats-kpi-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .table-scroll-container {
+    max-height: 40vh !important;
+  }
+
+  /* Larger touch targets for sliders on mobile */
+  input[type="range"] {
+    height: 8px !important;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    width: 26px !important;
+    height: 26px !important;
+  }
+
+  /* Switches on mobile */
+  .switch-container {
+    min-height: 32px;
+  }
+
+  .switch-slider {
+    width: 44px !important;
+    height: 24px !important;
+  }
+
+  .switch-slider:before {
+    width: 18px !important;
+    height: 18px !important;
+    bottom: 3px !important;
+    left: 3px !important;
+  }
+
+  input:checked + .switch-slider:before {
+    transform: translateX(20px) !important;
+  }
+
+  /* Toasts: positioned comfortably above the bottom navigation/dock */
+  .app-toast {
+    bottom: 74px !important;
+    font-size: 12px !important;
+    max-width: 90vw !important;
+    padding: 8px 14px !important;
   }
 }
 
